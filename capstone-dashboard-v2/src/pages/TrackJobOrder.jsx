@@ -38,7 +38,7 @@ const TrackJobOrder = () => {
   };
 
   return (
-    <div className="relative min-h-screen p-4 lg:p-8">
+    <div className="relative mt-16 lg:p-8">
       <div className="pb-4">
         <Title variant="secondaryBold" size="xxxl">
           Track Job Order

@@ -24,7 +24,7 @@ const servicesList = [
   "Household Cleaning Services",
 ];
 
-const AddJobOrderForm = ({ onClose }) => {
+const AddJobOrderForm = ({ onClose, adminId }) => {
   const [selectedOptions, setSelectedOptions] = useState([]);
   const [quotationUploaded, setQuotationUploaded] = useState(false);
   const [inspectionDate, setInspectionDate] = useState("");
@@ -44,6 +44,8 @@ const AddJobOrderForm = ({ onClose }) => {
     jobInspectionDate: "",
     jobStatus: "",
     jobNotificationAlert: "",
+    createdBy: adminId,
+    updatedBy: adminId,
   });
 
   const handleFileChange = (e) => {

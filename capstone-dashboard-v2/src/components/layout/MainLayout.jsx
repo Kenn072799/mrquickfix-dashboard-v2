@@ -1,21 +1,21 @@
 import React from "react";
-import { useLocation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import NavBar from "../navigation/NavBar";
 import SideBar from "../navigation/SideBar";
 
-const MainLayout = ({ children }) => {
+const MainLayout = () => {
   const location = useLocation();
   const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-
-  const showLayout = !isLoggedIn || location.pathname === "/";
 
   return (
     <>
       <div className="flex">
-        {showLayout && <SideBar />}
+        {isLoggedIn && <SideBar />}
         <div className="flex w-full flex-col">
-          {showLayout && <NavBar />}
-          <div className="bg-secondary-50">{children}</div>
+          {isLoggedIn && <NavBar />}
+          <div className="bg-secondary-50">
+            <Outlet />
+          </div>
         </div>
       </div>
     </>

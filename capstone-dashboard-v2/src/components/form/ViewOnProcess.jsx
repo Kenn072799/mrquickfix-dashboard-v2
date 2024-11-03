@@ -23,6 +23,7 @@ import {
 } from "react-icons/tb";
 import { useJobOrderData } from "../../data/JobOrderData";
 import Swal from "sweetalert2";
+import { useAdminData } from "../../data/AdminData";
 
 const servicesList = [
   "Fits-outs",
@@ -41,6 +42,23 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [loading, setLoading] = useState(false);
   const { updateJobOrder } = useJobOrderData();
+  const { getLoggedInAdmin, admin } = useAdminData();
+  const [admins, setAdmins] = useState([]);
+
+  useEffect(() => {
+    const fetchAdmins = async () => {
+      try {
+        const fetchedAdmins = await getLoggedInAdmin();
+        if (fetchedAdmins) {
+          setAdmins([fetchedAdmins]);
+        }
+      } catch (err) {
+        console.error("Error fetching admins:", err);
+      }
+    };
+
+    fetchAdmins();
+  }, [getLoggedInAdmin]);
 
   useEffect(() => {
     setUpdatedProject(jobOrder);
@@ -455,23 +473,31 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
           <div className="flex justify-between">
             <div className="flex flex-col">
               <span className="text-xs font-bold text-secondary-900">
-                Created By: <span className="capitalize">Kenneth Altes</span>
+                Created By:{" "}
+                <span className="capitalize">
+                  {jobOrder.createdBy?.firstName} {jobOrder.createdBy?.lastName}
+                </span>
               </span>
               <span className="text-xs text-secondary-500">
                 {new Date(jobOrder.createdAt).toLocaleString()}
               </span>
             </div>
 
-            {jobOrder.updatedAt !== jobOrder.createdAt && (
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-secondary-900">
-                  Updated By: <span className="capitalize">Kenneth Altes</span>
-                </span>
-                <span className="text-xs text-secondary-500">
-                  {new Date(jobOrder.updatedAt).toLocaleString()}
-                </span>
-              </div>
-            )}
+            {jobOrder.updatedAt !== jobOrder.createdAt &&
+              jobOrder.updatedBy && (
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-secondary-900">
+                    Updated By:{" "}
+                    <span className="capitalize">
+                      {jobOrder.updatedBy?.firstName}{" "}
+                      {jobOrder.updatedBy?.lastName}
+                    </span>
+                  </span>
+                  <span className="text-xs text-secondary-500">
+                    {new Date(jobOrder.updatedAt).toLocaleString()}
+                  </span>
+                </div>
+              )}
           </div>
         </div>
       </div>

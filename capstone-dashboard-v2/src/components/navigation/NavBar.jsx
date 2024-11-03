@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import useCurrentTime from "../hooks/useCurrentTime";
 import { Button } from "../props/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 //icons
 import { MdKeyboardArrowDown, MdOutlineLogout } from "react-icons/md";
@@ -10,10 +10,8 @@ import { RiAccountCircleLine } from "react-icons/ri";
 
 //png
 import Man from "../../assets/profile.png";
+import { useAdminData } from "../../data/AdminData";
 
-const firstName = "Kenneth";
-const lastName = "Altes";
-const role = "Admin";
 const notification = 5;
 const notificationList = [
   {
@@ -52,9 +50,38 @@ const NavBar = () => {
   const [openProfile, setOpenProfile] = useState(false);
   const [openNotification, setOpenNotification] = useState(false);
   const { timeAgo } = useCurrentTime();
+  const navigate = useNavigate();
+
+  const { getLoggedInAdmin, admin, loading, error, logoutAdmin } = useAdminData();
+
+  const [admins, setAdmins] = useState([]);
+
+  const handleLogout = async () => {
+    try {
+      await logoutAdmin();
+      navigate("/login-admin");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchAdmins = async () => {
+      try {
+        const fetchedAdmins = await getLoggedInAdmin();
+        if (fetchedAdmins) {
+          setAdmins([fetchedAdmins]);
+        }
+      } catch (err) {
+        console.error("Error fetching admins:", err);
+      }
+    };
+
+    fetchAdmins();
+  }, [getLoggedInAdmin]);
 
   return (
-    <div className="sticky top-0 z-40 flex h-16 w-full items-center justify-end gap-4 border-b bg-white px-4">
+    <div className="fixed inset-0 z-40 flex h-16 w-full items-center justify-end gap-4 border-b bg-white px-4">
       {/* notification */}
       <div
         className="relative cursor-pointer rounded-full bg-secondary-100 p-2 active:bg-secondary-200"
@@ -102,13 +129,17 @@ const NavBar = () => {
         }
       >
         <img src={Man} className="h-11 rounded-full ring-2 ring-primary-500" />
-        <div className="ml-4 hidden flex-col text-center md:flex">
-          <div className="flex gap-1">
-            <span>{firstName}</span>
-            <span>{lastName}</span>
+        {admin && (
+          <div className="ml-4 hidden flex-col text-center md:flex">
+            <div className="flex gap-1">
+              <span>{admin.firstName || "Best"}</span>
+              <span>{admin.lastName || "Admin"}</span>
+            </div>
+            <span className="text-sm font-semibold capitalize">
+              {admin.role || "Admin"}
+            </span>
           </div>
-          <span className="text-sm font-semibold">{role}</span>
-        </div>
+        )}
         <MdKeyboardArrowDown className="ml-2 text-[18px] text-secondary-500" />
         {/* profile dropdown */}
         {openProfile && (
@@ -121,13 +152,14 @@ const NavBar = () => {
                 <RiAccountCircleLine className="mr-2 text-[26px] text-primary-500" />
                 My Profile
               </Link>
-              <Link
-                to="/login"
+              <button
+                type="button"
                 className="flex px-3 py-4 text-secondary-600 hover:bg-primary-50"
+                onClick={handleLogout}
               >
                 <MdOutlineLogout className="mr-2 text-[26px] text-primary-500" />
                 Log Out
-              </Link>
+              </button>
             </div>
           </div>
         )}

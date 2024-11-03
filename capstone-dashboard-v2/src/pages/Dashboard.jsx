@@ -31,7 +31,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 lg:p-8">
+    <div className="mt-16 min-h-screen p-4 lg:p-8">
       <Title variant="secondaryBold" size="xxxl">
         Dashboard
       </Title>

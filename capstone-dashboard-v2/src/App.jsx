@@ -1,24 +1,90 @@
-import React from "react";
-import MainLayout from "./components/layout/MainLayout";
-import { Route, Routes } from "react-router-dom";
+import React, { useEffect } from "react";
+import { useRoutes, Navigate } from "react-router-dom";
+import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 
-//pages
+// Pages
 import Dashboard from "./pages/Dashboard";
 import TrackJobOrder from "./pages/TrackJobOrder";
 import Login from "./pages/Login";
+import AccountManagement from "./pages/AccountManagement";
+import MainLayout from "./components/layout/MainLayout";
+import PrivateRoute from "./components/layout/PrivateRoute";
+import ForgotPassword from "./components/login/ForgotPassword";
+import ResetPassword from "./components/login/ResetPassword";
+
+const isTokenExpired = (token) => {
+  if (!token) return true; // No token means expired
+  const decoded = jwtDecode(token);
+  return decoded.exp * 1000 < Date.now();
+};
 
 function App() {
-  return (
-    <>
-      <MainLayout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/track-job-orders" element={<TrackJobOrder />} />
-          <Route path="/login-admin" element={<Login />} />
-        </Routes>
-      </MainLayout>
-    </>
-  );
+  const handleLogout = async () => {
+    try {
+      await axios.post(
+        "/api/auth/logout",
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`
+          },
+        },
+      );
+      localStorage.removeItem("authToken");
+      localStorage.setItem("isLoggedIn", "false");
+      window.location.href = "/login-admin";
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  const checkToken = () => {
+    const token = localStorage.getItem("authToken");
+    if (isTokenExpired(token)) {
+      handleLogout();
+    }
+  };
+
+  useEffect(() => {
+    checkToken();
+  }, []);
+
+  const routing = useRoutes([
+    {
+      path: "/login-admin",
+      element:
+        localStorage.getItem("isLoggedIn") === "true" ? (
+          <Navigate to="/" replace />
+        ) : (
+          <Login />
+        ),
+    },
+    {
+      path: "/forgot-password",
+      element: <ForgotPassword />,
+    },
+    {
+      path: "/reset-password/:token",
+      element: <ResetPassword />,
+    },
+    {
+      element: <PrivateRoute />,
+      children: [
+        {
+          path: "/",
+          element: <MainLayout />,
+          children: [
+            { path: "/", element: <Dashboard /> },
+            { path: "/track-job-orders", element: <TrackJobOrder /> },
+            { path: "/account-management", element: <AccountManagement /> },
+          ],
+        },
+      ],
+    },
+  ]);
+
+  return <>{routing}</>;
 }
 
 export default App;

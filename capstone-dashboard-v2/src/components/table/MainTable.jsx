@@ -13,7 +13,7 @@ import {
   TbEye,
   TbCircleX,
   TbCalendarSearch,
-  TbClockCog,
+  TbClockUp,
   TbHomeSearch,
   TbFilePlus,
   TbReportMoney,
@@ -37,12 +37,42 @@ const MainTable = ({ setSelectedJobOrder }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const throttle = (func, limit) => {
+    let lastFunc;
+    let lastRan;
+
+    return function (...args) {
+      const context = this;
+      if (!lastRan) {
+        func.apply(context, args);
+        lastRan = Date.now();
+      } else {
+        clearTimeout(lastFunc);
+        lastFunc = setTimeout(
+          () => {
+            if (Date.now() - lastRan >= limit) {
+              func.apply(context, args);
+              lastRan = Date.now();
+            }
+          },
+          limit - (Date.now() - lastRan),
+        );
+      }
+    };
+  };
+
   const { alertInspectionTomorrow, alertInspectionToday, alertWaitingUpdate } =
     useJobAlerts(today);
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+
+    const throttledFetchProjects = throttle(fetchProjects, 60000); // Throttle to 60 seconds
+
+    const intervalId = setInterval(throttledFetchProjects, 10000); // Check every 10 seconds
+
+    return () => clearInterval(intervalId);
+  }, [fetchProjects]);
 
   const jobNotificationAlertProcess = [
     {
@@ -60,7 +90,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
     },
     {
       message: "waiting for update",
-      icon: TbClockCog,
+      icon: TbClockUp,
       condition: (jobOrder) =>
         jobOrder.jobStatus === "on process" && alertWaitingUpdate(jobOrder),
     },
@@ -133,40 +163,48 @@ const MainTable = ({ setSelectedJobOrder }) => {
     (jobOrder) => statusFilter === "All" || jobOrder.jobStatus === statusFilter,
   );
 
-  const handleQuotationModal = async () => {
-    const result = await Swal.fire({
+const handleQuotationModal = async () => {
+  const result = await Swal.fire({
       title: "Do you want to save the changes?",
       showCancelButton: true,
       confirmButtonText: "Save",
-    });
+  });
 
-    if (result.isConfirmed) {
+  if (result.isConfirmed) {
       try {
-        setLoading(true);
-        const updatedJob = {
-          ...updatedProject,
-          jobStatus: "in progress",
-        };
+          setLoading(true);
 
-        const { success, message } = await updateJobOrder(
-          updatedProject._id,
-          updatedJob,
-        );
+          const userID = localStorage.getItem("userID");
+          console.log("User ID:", userID);
 
-        setLoading(false);
+          if (!userID) {
+              setLoading(false);
+              Swal.fire("Error", "User ID is required to update the job order.", "error");
+              return;
+          }
 
-        if (!success) {
-          Swal.fire("Oops...", message, "error");
-        } else {
-          Swal.fire("Saved!", "Job order updated successfully!", "success");
-          setOpenQuotationModal(false);
-        }
+          const updatedJob = {
+              ...updatedProject,
+              jobStatus: "in progress",
+              updatedBy: userID,
+          };
+
+          const { success, message } = await updateJobOrder(updatedProject._id, updatedJob);
+
+          setLoading(false);
+
+          if (!success) {
+              Swal.fire("Oops...", message, "error");
+          } else {
+              Swal.fire("Saved!", "Job order updated successfully!", "success");
+              setOpenQuotationModal(false);
+          }
       } catch (error) {
-        setLoading(false);
-        Swal.fire("Error", "Failed to update job order.", "error");
+          setLoading(false);
+          Swal.fire("Error", "Failed to update job order.", "error");
       }
-    }
-  };
+  }
+};
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -261,7 +299,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
                 <th className="w-10">No</th>
                 <th className="min-w-[150px]">First Name</th>
                 <th className="min-w-[150px]">Last Name</th>
-                <th className="min-w-[300px]">Job Type</th>
+                <th className="min-w-[200px]">Job Type</th>
                 <th className="min-w-[150px]">Status</th>
                 <th className="w-full">Alert</th>
                 <th className="min-w-[150px]">Action</th>
@@ -295,43 +333,56 @@ const MainTable = ({ setSelectedJobOrder }) => {
                       </div>
                     </td>
                     <td>
-                      {jobNotificationAlertProcess
-                        .filter(
-                          (alert) =>
-                            jobOrder.jobNotificationAlert !==
-                              "ready for quotation" ||
-                            alert.message === "ready for quotation",
-                        )
-                        .map((alert, index) => {
-                          const IconComponent = alert.icon;
-                          return (
-                            (alert.condition(jobOrder) ||
-                              jobOrder.jobNotificationAlert ===
-                                alert.message) && (
-                              <div className="flex" key={index}>
-                                <Chip
-                                  variant="ghost"
-                                  color="gray"
-                                  value={
-                                    <Typography
-                                      variant="small"
-                                      className="!flex !items-center !text-sm font-bold capitalize leading-none"
-                                    >
-                                      <IconComponent className="mr-2 inline text-xl" />
-                                      {alert.message}
-                                    </Typography>
-                                  }
-                                />
-                              </div>
+                      {/* IF JOB STATUS ON PROCESS THEN SHOW ALERT FOR ON PROCESS ELSE SHOW ALERT FOR IN PROGRESS */}
+                      {jobOrder.jobStatus === "on process" ? (
+                        <>
+                          {jobNotificationAlertProcess
+                            .filter(
+                              (alert) =>
+                                jobOrder.jobNotificationAlert !==
+                                  "ready for quotation" ||
+                                alert.message === "ready for quotation",
                             )
-                          );
-                        })}
+                            .map((alert, index) => {
+                              const IconComponent = alert.icon;
+                              return (
+                                (alert.condition(jobOrder) ||
+                                  jobOrder.jobNotificationAlert ===
+                                    alert.message) && (
+                                  <div className="flex" key={index}>
+                                    <Chip
+                                      variant="ghost"
+                                      color="gray"
+                                      value={
+                                        <Typography
+                                          variant="small"
+                                          className="!flex !items-center !text-sm font-bold capitalize leading-none"
+                                        >
+                                          <IconComponent className="mr-2 inline text-xl" />
+                                          {alert.message}
+                                        </Typography>
+                                      }
+                                    />
+                                  </div>
+                                )
+                              );
+                            })}
+                        </>
+                      ) : null}
                     </td>
                     <td className="flex items-center justify-end gap-3">
                       {jobOrder.jobStatus === "on process" &&
                         (jobOrder.jobNotificationAlert ===
                         "ready for quotation" ? (
-                          <Tooltip content="Add Quotation">
+                          <Tooltip
+                            content="Add Quotation"
+                            className="!bg-opacity-60"
+                            placement="left"
+                            animate={{
+                              mount: { scale: 1, y: 0 },
+                              unmount: { scale: 0, y: 25 },
+                            }}
+                          >
                             <Button
                               className="!bg-green-500 !p-1"
                               onClick={() => {
@@ -343,7 +394,15 @@ const MainTable = ({ setSelectedJobOrder }) => {
                             </Button>
                           </Tooltip>
                         ) : (
-                          <Tooltip content="Finish inspection">
+                          <Tooltip
+                            content="Finish Inspection"
+                            className="!bg-opacity-60"
+                            placement="left"
+                            animate={{
+                              mount: { scale: 1, y: 0 },
+                              unmount: { scale: 0, y: 25 },
+                            }}
+                          >
                             <Button
                               className="!bg-red-500 !p-1"
                               onClick={() => handleFinishInspection(jobOrder)}

@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 
+// Define the job order schema
 const joborderSchema = new mongoose.Schema({
-    // client
+    // Client Information
     clientFirstName: {
         type: String,
         required: true
@@ -27,16 +28,16 @@ const joborderSchema = new mongoose.Schema({
         required: false
     },
     clientInquiryDate: {
-        type: String,
+        type: Date, // Use Date type for dates
         required: false
     },
-    // job
+    // Job Information
     jobType: {
         type: String,
         required: false
     },
     jobServices: {
-        type: Array,
+        type: [String], // Explicitly declare array of strings
         required: false
     },
     jobStatus: {
@@ -44,7 +45,7 @@ const joborderSchema = new mongoose.Schema({
         required: false
     },
     jobInspectionDate: {
-        type: String,
+        type: Date, // Use Date type for dates
         required: false
     },
     jobQuotation: {
@@ -52,11 +53,11 @@ const joborderSchema = new mongoose.Schema({
         required: false
     },
     jobStartDate: {
-        type: String,
+        type: Date, // Use Date type for dates
         required: false
     },
     jobEndDate: {
-        type: String,
+        type: Date, // Use Date type for dates
         required: false
     },
     jobNotificationAlert: {
@@ -64,31 +65,21 @@ const joborderSchema = new mongoose.Schema({
         required: false
     },
     jobCancelledDate: {
-        type: String,
+        type: Date, // Use Date type for dates
         required: false
     },
     jobRemark: {
         type: String,
         required: false
     },
-    // admin
-    adminId: {
-        type: String,
-        required: false
-    },
-    adminFirstName: {
-        type: String,
-        required: false
-    },
-    adminLastName: {
-        type: String,
-        required: false
-    }
-}, {
-    timestamps: true // createdAt & updatedAt
+    // References to Admin
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", required: true },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", required: false },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
 });
 
-const JobOrder =  mongoose.model("JobOrder", joborderSchema);
+// Create the model
+const JobOrder = mongoose.model("JobOrder", joborderSchema);
 
 export default JobOrder;
-    

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAdminData } from "../../data/AdminData";
 
 //png
 import Logo from "../../assets/Mr.QuickFixLogo.png";
@@ -21,6 +22,17 @@ import { BiBookContent } from "react-icons/bi";
 const SideBar = () => {
   const [openMisc, setOpenMisc] = useState(false);
   const [openMenu, setOpenMenu] = useState(true);
+  const navigate = useNavigate();
+  const { logoutAdmin } = useAdminData();
+
+  const handleLogout = async () => {
+    try {
+      await logoutAdmin();
+      navigate("/login-admin");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
 
   return (
     <div
@@ -29,7 +41,7 @@ const SideBar = () => {
       }`}
     >
       <div
-        className="absolute -right-3 top-5 cursor-pointer rounded-full bg-white ring-1 ring-secondary-100 hover:bg-slate-100"
+        className="hover:bg-slate-100 absolute -right-3 top-5 cursor-pointer rounded-full bg-white ring-1 ring-secondary-100"
         onClick={() => setOpenMenu(!openMenu)}
       >
         <IoChevronDownOutline
@@ -292,35 +304,26 @@ const SideBar = () => {
           </li>
           <div className="my-4 h-[1.1px] w-full bg-secondary-200"></div>
           <li className="w-full rounded-sm">
-            <NavLink
-              to="/login-admin"
-              className={({ isActive }) =>
-                `group relative inline-flex w-full items-center rounded-sm px-2 ${
-                  isActive
-                    ? "bg-primary-500 py-2 text-primary-50"
-                    : "py-2 text-secondary-600 hover:bg-primary-50"
-                }`
-              }
+            <button
+              type="button"
+              className={`group relative inline-flex w-full items-center rounded-sm px-2 py-2 text-secondary-600 hover:bg-primary-50`}
+              onClick={handleLogout}
             >
-              {({ isActive }) => (
-                <>
-                  <MdOutlineLogout
-                    className={`duration-500 ${
-                      openMenu ? "my-3 ml-5 text-[26px]" : "mr-2 text-[26px]"
-                    } ${isActive ? "text-primary-50" : "text-primary-500"}`}
-                  />
-                  <span
-                    className={`ml-2 duration-500 ${
-                      openMenu
-                        ? "absolute left-20 hidden whitespace-nowrap rounded-sm bg-secondary-800/80 p-3 text-sm text-primary-50 group-hover:block"
-                        : ""
-                    }`}
-                  >
-                    Log Out
-                  </span>
-                </>
-              )}
-            </NavLink>
+              <MdOutlineLogout
+                className={`duration-500 ${
+                  openMenu ? "my-3 ml-5 text-[26px]" : "mr-2 text-[26px]"
+                } text-primary-500`}
+              />
+              <span
+                className={`ml-2 duration-500 ${
+                  openMenu
+                    ? "absolute left-20 hidden whitespace-nowrap rounded-sm bg-secondary-800/80 p-3 text-sm text-primary-50 group-hover:block"
+                    : ""
+                }`}
+              >
+                Log Out
+              </span>
+            </button>
           </li>
         </ul>
       </div>
