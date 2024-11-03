@@ -69,6 +69,7 @@ const LoginAdmin = () => {
             <input
               type="email"
               className="input input-bordered w-full text-lg"
+              autoFocus
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

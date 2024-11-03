@@ -94,42 +94,42 @@ export const useAdminData = create((set) => ({
     }
   },
 
-// Get logged-in admin details
-getLoggedInAdmin: async () => {
-  set({ loading: true, error: null });
-  try {
-      const token = localStorage.getItem("authToken");
+  // Get logged-in admin details
+  getLoggedInAdmin: async () => {
+    set({ loading: true, error: null });
+    try {
+        const token = localStorage.getItem("authToken");
 
-      if (!token) {
-          alert("You are not logged in. Please log in again.");
-          window.location.href = "/login-admin";
-          return;
-      }
+        if (!token) {
+            alert("You are not logged in. Please log in again.");
+            window.location.href = "/login-admin";
+            return;
+        }
 
-      const res = await axios.get("/api/auth/me", {
-          headers: {
-              Authorization: `Bearer ${token}`
-          }
-      });
+        const res = await axios.get("/api/auth/me", {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
 
-      set({ admin: res.data.data, loading: false });
-      return res.data.data;
-  } catch (error) {
-      if (error.response?.status === 401 || error.response?.status === 403) {
-          alert("Session has expired or is invalid. Please log in again.");
-          localStorage.removeItem("authToken");
-          localStorage.setItem("isLoggedIn", "false");
-          window.location.href = "/login-admin";
-      } else {
-          set({
-              admin: null,
-              error: error.response?.data?.message || error.message,
-              loading: false
-          });
-      }
-      throw error;
-  }
-},
+        set({ admin: res.data.data, loading: false });
+        return res.data.data;
+    } catch (error) {
+        if (error.response?.status === 401 || error.response?.status === 403) {
+            alert("Session has expired or is invalid. Please log in again.");
+            localStorage.removeItem("authToken");
+            localStorage.setItem("isLoggedIn", "false");
+            window.location.href = "/login-admin";
+        } else {
+            set({
+                admin: null,
+                error: error.response?.data?.message || error.message,
+                loading: false
+            });
+        }
+        throw error;
+    }
+  },
 
 
   // Signup function

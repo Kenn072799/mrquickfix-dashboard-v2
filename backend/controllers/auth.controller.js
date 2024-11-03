@@ -94,7 +94,7 @@ export const resendOTP = async (req, res) => {
     }
 
     const newOTP = generateOTP();
-    const newExpiry = new Date(Date.now() + 2 * 60 * 1000);
+    const newExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes timer before resend OTP
 
     user.otp = { code: newOTP, expiry: newExpiry };
     await user.save();
@@ -156,7 +156,7 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Email not verified. Contact other admins for verification' });
     }
 
-    const token = jwt.sign({ userId: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '8h' }); // Token expires in 1 hour
+    const token = jwt.sign({ userId: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '8h' }); // Token expires in 8 hours
 
     user.loginDate = new Date();
     await user.save(); 
