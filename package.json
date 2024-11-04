@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development nodemon backend/server.js",
-    "build": "npm install && npm install --prefix capstone-dashboard-v2 && npm run build --prefix capstone-dashboard-v2",
-    "start": "cross-env NODE_ENV=production node backend/server.js"
+    "dev": "nodemon backend/server.js",
+    "build": "npm install --production=false --prefix capstone-dashboard-v2 && npm run build --prefix capstone-dashboard-v2",
+    "start": "node backend/server.js"
   },
   "type": "module",
   "keywords": [],
