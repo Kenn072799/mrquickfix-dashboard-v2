@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon backend/server.js",
-    "build": "npm install --production=false --prefix capstone-dashboard-v2 && npm run build --prefix capstone-dashboard-v2",
+    "build": "npm install --production=false && npm install --prefix capstone-dashboard-v2 && npm run build --prefix capstone-dashboard-v2",
     "start": "node backend/server.js"
   },
   "type": "module",
@@ -19,6 +19,7 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "express": "^4.21.1",
     "express-session": "^1.18.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.7.3",
