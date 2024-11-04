@@ -30,7 +30,7 @@ app.use("/api/auth", authRoutes);
 
 // Serve static assets in production
 if(process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '/capstone-dashboard-v2/dist')));
+  app.use(express.static(path.join(__dirname, 'capstone-dashboard-v2/dist')));
 
   app.get('*', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'capstone-dashboard-v2', 'dist', 'index.html'));
