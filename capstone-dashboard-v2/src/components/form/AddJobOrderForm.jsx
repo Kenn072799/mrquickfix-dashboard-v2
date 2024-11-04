@@ -41,6 +41,7 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
     jobQuotation: "",
     jobStartDate: "",
     jobEndDate: "",
+    jobExtendedDate: "",
     jobInspectionDate: "",
     jobStatus: "",
     jobNotificationAlert: "",

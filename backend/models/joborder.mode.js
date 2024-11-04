@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 
-// Define the job order schema
 const joborderSchema = new mongoose.Schema({
     // Client Information
     clientFirstName: {
@@ -28,7 +27,7 @@ const joborderSchema = new mongoose.Schema({
         required: false
     },
     clientInquiryDate: {
-        type: Date, // Use Date type for dates
+        type: Date,
         required: false
     },
     // Job Information
@@ -37,7 +36,7 @@ const joborderSchema = new mongoose.Schema({
         required: false
     },
     jobServices: {
-        type: [String], // Explicitly declare array of strings
+        type: [String],
         required: false
     },
     jobStatus: {
@@ -45,7 +44,7 @@ const joborderSchema = new mongoose.Schema({
         required: false
     },
     jobInspectionDate: {
-        type: Date, // Use Date type for dates
+        type: Date,
         required: false
     },
     jobQuotation: {
@@ -53,19 +52,23 @@ const joborderSchema = new mongoose.Schema({
         required: false
     },
     jobStartDate: {
-        type: Date, // Use Date type for dates
+        type: Date, 
         required: false
     },
     jobEndDate: {
-        type: Date, // Use Date type for dates
+        type: Date,
         required: false
     },
     jobNotificationAlert: {
         type: String,
         required: false
     },
+    jobExtendedDate: {
+        type: Date,
+        required: false
+    },
     jobCancelledDate: {
-        type: Date, // Use Date type for dates
+        type: Date,
         required: false
     },
     jobRemark: {
@@ -79,7 +82,6 @@ const joborderSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now }
 });
 
-// Create the model
 const JobOrder = mongoose.model("JobOrder", joborderSchema);
 
 export default JobOrder;

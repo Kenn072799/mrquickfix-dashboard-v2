@@ -19,11 +19,12 @@ import {
   TbEditOff,
   TbFilePlus,
   TbFlagCheck,
-  TbCalendarSearch,
+  TbExclamationCircle,
 } from "react-icons/tb";
 import { useJobOrderData } from "../../data/JobOrderData";
 import Swal from "sweetalert2";
 import { useAdminData } from "../../data/AdminData";
+import { useJobAlertProgress } from "../../data/useJobAlertProgress";
 
 const servicesList = [
   "Fits-outs",
@@ -44,6 +45,15 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
   const { updateJobOrder } = useJobOrderData();
   const { getLoggedInAdmin, admin } = useAdminData();
   const [admins, setAdmins] = useState([]);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const {
+    alertProjectDelayed,
+    alertProjectExtended,
+    alertProjectExtendedFinishToday,
+  } = useJobAlertProgress(today);
 
   useEffect(() => {
     const fetchAdmins = async () => {
@@ -239,8 +249,55 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
               </span>
               <div className="my-2 h-[1px] w-full bg-secondary-200"></div>
             </div>
+            {/* Extended Date - shows only if the project is delayed or extended */}
+            {(alertProjectExtended(jobOrder) ||
+              alertProjectDelayed(jobOrder) ||
+              alertProjectExtendedFinishToday(jobOrder)) && (
+              <>
+                {alertProjectDelayed(jobOrder) && (
+                  <div className="rounded-lg border border-green-500 bg-green-50 p-1">
+                    <span className="flex items-center text-xs">
+                      <TbExclamationCircle className="mr-1 text-red-500" />
+                      Did you want to extend it?
+                    </span>
+                  </div>
+                )}
+                {alertProjectExtendedFinishToday(jobOrder) && (
+                  <div className="rounded-lg border border-green-500 bg-green-50 p-1">
+                    <span className="flex items-center text-xs">
+                      <TbExclamationCircle className="mr-1 text-red-500" />
+                      Did you want to extend it again?
+                    </span>
+                  </div>
+                )}
+                <Input
+                  id="jobExtendedDate"
+                  type={editMode ? "date" : "text"}
+                  name="jobExtendedDate"
+                  label="Extended Date"
+                  value={
+                    editMode
+                      ? updatedProject.jobExtendedDate
+                      : jobOrder.jobExtendedDate
+                        ? new Date(jobOrder.jobExtendedDate).toLocaleDateString(
+                            "en-US",
+                          )
+                        : ""
+                  }
+                  onChange={(e) =>
+                    editMode &&
+                    setUpdatedProject({
+                      ...updatedProject,
+                      jobExtendedDate: e.target.value,
+                    })
+                  }
+                  readOnly={!editMode}
+                />
+              </>
+            )}
 
             <div className="flex gap-2">
+              {/* Start Date */}
               <Input
                 id="jobStartDate"
                 type={editMode ? "date" : "text"}
@@ -260,8 +317,15 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                     jobStartDate: e.target.value,
                   })
                 }
-                readOnly={!editMode}
+                readOnly={!editMode || alertProjectDelayed(jobOrder)}
+                disabled={
+                  editMode &&
+                  (alertProjectDelayed(jobOrder) ||
+                    alertProjectExtended(jobOrder) ||
+                    alertProjectExtendedFinishToday(jobOrder))
+                }
               />
+              {/* End Date */}
               <Input
                 id="jobEndDate"
                 type={editMode ? "date" : "text"}
@@ -280,8 +344,15 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                   })
                 }
                 readOnly={!editMode}
+                disabled={
+                  editMode &&
+                  (alertProjectDelayed(jobOrder) ||
+                    alertProjectExtended(jobOrder) ||
+                    alertProjectExtendedFinishToday(jobOrder))
+                }
               />
             </div>
+
             {!editMode ? (
               <div>
                 <a
@@ -475,7 +546,14 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
               <span className="text-xs font-bold text-secondary-900">
                 Created By:{" "}
                 <span className="capitalize">
-                  {jobOrder.createdBy?.firstName} {jobOrder.createdBy?.lastName}
+                  {jobOrder.createdBy?.firstName || (
+                    <>
+                      <span className="animate-pulse normal-case animate-duration-1000">
+                        Please wait...
+                      </span>
+                    </>
+                  )}{" "}
+                  {jobOrder.createdBy?.lastName}
                 </span>
               </span>
               <span className="text-xs text-secondary-500">
@@ -489,7 +567,13 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                   <span className="text-xs font-bold text-secondary-900">
                     Updated By:{" "}
                     <span className="capitalize">
-                      {jobOrder.updatedBy?.firstName}{" "}
+                      {jobOrder.updatedBy?.firstName || (
+                        <>
+                          <span className="animate-pulse normal-case animate-duration-1000">
+                            Please wait...
+                          </span>
+                        </>
+                      )}{" "}
                       {jobOrder.updatedBy?.lastName}
                     </span>
                   </span>

@@ -19,9 +19,19 @@ import {
   TbReportMoney,
   TbFlagCheck,
   TbX,
+  TbCalendarEvent,
+  TbCalendarBolt,
+  TbCalendarCheck,
+  TbExclamationCircle,
+  TbCalendarPlus,
+  TbClock24,
+  TbPlayerPlay,
+  TbCircleCheck,
+  TbCalendarClock,
 } from "react-icons/tb";
 import Relax from "../../assets/undraw_A_moment_to_relax_re_v5gv.png";
 import { useJobAlerts } from "../../data/useJobAlerts";
+import { useJobAlertProgress } from "../../data/useJobAlertProgress";
 
 const MainTable = ({ setSelectedJobOrder }) => {
   const [entriesToShow, setEntriesToShow] = useState(10);
@@ -30,9 +40,11 @@ const MainTable = ({ setSelectedJobOrder }) => {
     useJobOrderData();
   const [updatedProject, setUpdatedProject] = useState(null);
   const [openQuotationModal, setOpenQuotationModal] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [buttonLoading, setButtonLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [quotationUploaded, setQuotationUploaded] = useState(false);
   const [finishInspectionStatus, setFinishInspectionStatus] = useState({});
+  const [startProjectStatus, setStartProjectStatus] = useState({});
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -64,12 +76,50 @@ const MainTable = ({ setSelectedJobOrder }) => {
   const { alertInspectionTomorrow, alertInspectionToday, alertWaitingUpdate } =
     useJobAlerts(today);
 
+  const {
+    alertProjectStartTomorrow,
+    alertProjectStartToday,
+    alertProjectFinishToday,
+    alertProjectDelayed,
+    alertProjectStartAndFinishToday,
+    alertProjectExtended,
+    alertProjectStartInPast,
+    alertProjectExtendedFinishToday,
+  } = useJobAlertProgress(today);
+
   useEffect(() => {
-    fetchProjects();
+    const initializeData = async () => {
+      setLoading(true);
+      try {
+        await fetchProjects();
+        const statusFromDatabase = {};
+        projects.forEach((jobOrder) => {
+          if (jobOrder.jobNotificationAlert === "ongoing project") {
+            statusFromDatabase[jobOrder._id] = true;
+          }
+        });
+        setStartProjectStatus(statusFromDatabase);
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const throttledFetchProjects = throttle(fetchProjects, 60000); // Throttle to 60 seconds
+    initializeData();
 
-    const intervalId = setInterval(throttledFetchProjects, 10000); // Check every 10 seconds
+    const throttledFetchProjects = throttle(async () => {
+      setLoading(true);
+      try {
+        await fetchProjects();
+      } catch (error) {
+        console.error("Error fetching projects during interval:", error);
+      } finally {
+        setLoading(false);
+      }
+    }, 120000);
+
+    const intervalId = setInterval(throttledFetchProjects, 10000);
 
     return () => clearInterval(intervalId);
   }, [fetchProjects]);
@@ -98,6 +148,71 @@ const MainTable = ({ setSelectedJobOrder }) => {
       message: "ready for quotation",
       icon: TbReportMoney,
       condition: (jobOrder) => finishInspectionStatus[jobOrder._id] === true,
+    },
+  ];
+
+  const jobNotificationAlertProgress = [
+    {
+      message: "Project starts tomorrow",
+      icon: TbClock24,
+      condition: (jobOrder) =>
+        jobOrder.jobStatus === "in progress" &&
+        alertProjectStartTomorrow(jobOrder),
+    },
+    {
+      message: "Project starts today",
+      icon: TbCalendarEvent,
+      condition: (jobOrder) =>
+        jobOrder.jobStatus === "in progress" &&
+        alertProjectStartToday(jobOrder),
+    },
+    {
+      message: "Waiting for update",
+      icon: TbClockUp,
+      condition: (jobOrder) =>
+        jobOrder.jobStatus === "in progress" &&
+        alertProjectStartInPast(jobOrder) &&
+        !startProjectStatus[jobOrder._id],
+    },
+    {
+      message: "Project starts and finishes today",
+      icon: TbCalendarBolt,
+      condition: (jobOrder) =>
+        jobOrder.jobStatus === "in progress" &&
+        alertProjectStartAndFinishToday(jobOrder),
+    },
+    {
+      message: "Project finishes today",
+      icon: TbCalendarCheck,
+      condition: (jobOrder) =>
+        jobOrder.jobStatus === "in progress" &&
+        alertProjectFinishToday(jobOrder),
+    },
+    {
+      message: "Project is delayed",
+      icon: TbExclamationCircle,
+      condition: (jobOrder) =>
+        jobOrder.jobStatus === "in progress" && alertProjectDelayed(jobOrder),
+    },
+    {
+      message: "Project has been extended",
+      icon: TbCalendarPlus,
+      condition: (jobOrder) =>
+        jobOrder.jobStatus === "in progress" && alertProjectExtended(jobOrder),
+    },
+    {
+      message: "Extended project finishes today",
+      icon: TbCalendarCheck,
+      condition: (jobOrder) =>
+        jobOrder.jobStatus === "in progress" &&
+        alertProjectExtendedFinishToday(jobOrder),
+    },
+    {
+      message: "Ongoing project",
+      icon: TbCalendarClock,
+      condition: (jobOrder) =>
+        jobOrder.jobStatus === "in progress" &&
+        startProjectStatus[jobOrder._id],
     },
   ];
 
@@ -148,6 +263,48 @@ const MainTable = ({ setSelectedJobOrder }) => {
     }
   };
 
+  const handleStartProject = async (jobOrder) => {
+    try {
+      const result = await Swal.fire({
+        title: "Do you want to start this project?",
+        showCancelButton: true,
+        confirmButtonText: "Yes, Start",
+        icon: "question",
+      });
+
+      if (result.isConfirmed) {
+        setStartProjectStatus((prevStatus) => ({
+          ...prevStatus,
+          [jobOrder._id]: true,
+        }));
+
+        const updateResult = await alertJobOrder(jobOrder._id, {
+          jobNotificationAlert: "ongoing project",
+        });
+
+        if (updateResult.success) {
+          Swal.fire(
+            "Project Started",
+            "Stay up to date with project alert.",
+            "success",
+          );
+        } else {
+          setStartProjectStatus((prevStatus) => ({
+            ...prevStatus,
+            [jobOrder._id]: false,
+          }));
+          Swal.fire("Error", "Failed to update job order.", "error");
+        }
+      }
+    } catch (error) {
+      setStartProjectStatus((prevStatus) => ({
+        ...prevStatus,
+        [jobOrder._id]: false,
+      }));
+      Swal.fire("Error", "Failed to update job order.", "error");
+    }
+  };
+
   const statusColors = {
     "in progress": "orange",
     completed: "green",
@@ -163,48 +320,54 @@ const MainTable = ({ setSelectedJobOrder }) => {
     (jobOrder) => statusFilter === "All" || jobOrder.jobStatus === statusFilter,
   );
 
-const handleQuotationModal = async () => {
-  const result = await Swal.fire({
+  const handleQuotationModal = async () => {
+    const result = await Swal.fire({
       title: "Do you want to save the changes?",
       showCancelButton: true,
       confirmButtonText: "Save",
-  });
+    });
 
-  if (result.isConfirmed) {
+    if (result.isConfirmed) {
       try {
-          setLoading(true);
+        setButtonLoading(true);
 
-          const userID = localStorage.getItem("userID");
-          console.log("User ID:", userID);
+        const userID = localStorage.getItem("userID");
 
-          if (!userID) {
-              setLoading(false);
-              Swal.fire("Error", "User ID is required to update the job order.", "error");
-              return;
-          }
+        if (!userID) {
+          setButtonLoading(false);
+          Swal.fire(
+            "Error",
+            "User ID is required to update the job order.",
+            "error",
+          );
+          return;
+        }
 
-          const updatedJob = {
-              ...updatedProject,
-              jobStatus: "in progress",
-              updatedBy: userID,
-          };
+        const updatedJob = {
+          ...updatedProject,
+          jobStatus: "in progress",
+          updatedBy: userID,
+        };
 
-          const { success, message } = await updateJobOrder(updatedProject._id, updatedJob);
+        const { success, message } = await updateJobOrder(
+          updatedProject._id,
+          updatedJob,
+        );
 
-          setLoading(false);
+        setButtonLoading(false);
 
-          if (!success) {
-              Swal.fire("Oops...", message, "error");
-          } else {
-              Swal.fire("Saved!", "Job order updated successfully!", "success");
-              setOpenQuotationModal(false);
-          }
+        if (!success) {
+          Swal.fire("Oops...", message, "error");
+        } else {
+          Swal.fire("Saved!", "Job order updated successfully!", "success");
+          setOpenQuotationModal(false);
+        }
       } catch (error) {
-          setLoading(false);
-          Swal.fire("Error", "Failed to update job order.", "error");
+        setButtonLoading(false);
+        Swal.fire("Error", "Failed to update job order.", "error");
       }
-  }
-};
+    }
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -305,7 +468,15 @@ const handleQuotationModal = async () => {
                 <th className="min-w-[150px]">Action</th>
               </tr>
             </thead>
-            {projects.length > 0 ? (
+            {loading ? (
+              <tbody>
+                <tr>
+                  <td colSpan="7" className="h-[400px] text-center">
+                    <span className="loading loading-bars loading-lg"></span>
+                  </td>
+                </tr>
+              </tbody>
+            ) : projects.length > 0 ? (
               <tbody>
                 {filteredData.slice(0, entriesToShow).map((jobOrder, index) => (
                   <tr
@@ -333,23 +504,49 @@ const handleQuotationModal = async () => {
                       </div>
                     </td>
                     <td>
-                      {/* IF JOB STATUS ON PROCESS THEN SHOW ALERT FOR ON PROCESS ELSE SHOW ALERT FOR IN PROGRESS */}
+                      {/* Job Status Alerts */}
                       {jobOrder.jobStatus === "on process" ? (
-                        <>
-                          {jobNotificationAlertProcess
-                            .filter(
-                              (alert) =>
-                                jobOrder.jobNotificationAlert !==
-                                  "ready for quotation" ||
-                                alert.message === "ready for quotation",
-                            )
-                            .map((alert, index) => {
+                        jobNotificationAlertProcess
+                          .filter(
+                            (alert) =>
+                              jobOrder.jobNotificationAlert !==
+                                "ready for quotation" ||
+                              alert.message === "ready for quotation",
+                          )
+                          .map((alert, alertIndex) => {
+                            const IconComponent = alert.icon;
+                            return (
+                              (alert.condition(jobOrder) ||
+                                jobOrder.jobNotificationAlert ===
+                                  alert.message) && (
+                                <div className="flex" key={alertIndex}>
+                                  <Chip
+                                    variant="ghost"
+                                    color="gray"
+                                    value={
+                                      <Typography
+                                        variant="small"
+                                        className="!flex !items-center !text-sm font-bold capitalize leading-none"
+                                      >
+                                        <IconComponent className="mr-2 inline text-xl" />
+                                        {alert.message}
+                                      </Typography>
+                                    }
+                                  />
+                                </div>
+                              )
+                            );
+                          })
+                      ) : jobOrder.jobStatus === "in progress" ? (
+                        <div className="flex gap-4">
+                          {jobNotificationAlertProgress.map(
+                            (alert, alertIndex) => {
                               const IconComponent = alert.icon;
                               return (
                                 (alert.condition(jobOrder) ||
                                   jobOrder.jobNotificationAlert ===
                                     alert.message) && (
-                                  <div className="flex" key={index}>
+                                  <div className="flex" key={alertIndex}>
                                     <Chip
                                       variant="ghost"
                                       color="gray"
@@ -366,13 +563,15 @@ const handleQuotationModal = async () => {
                                   </div>
                                 )
                               );
-                            })}
-                        </>
+                            },
+                          )}
+                        </div>
                       ) : null}
                     </td>
                     <td className="flex items-center justify-end gap-3">
-                      {jobOrder.jobStatus === "on process" &&
-                        (jobOrder.jobNotificationAlert ===
+                      {/* Actions based on job status */}
+                      {jobOrder.jobStatus === "on process" ? (
+                        jobOrder.jobNotificationAlert ===
                         "ready for quotation" ? (
                           <Tooltip
                             content="Add Quotation"
@@ -410,11 +609,44 @@ const handleQuotationModal = async () => {
                               <TbFlagCheck className="text-[20px]" />
                             </Button>
                           </Tooltip>
-                        ))}
-
+                        )
+                      ) : jobOrder.jobStatus === "in progress" ? (
+                        jobOrder.jobNotificationAlert === "ongoing project" ? (
+                          <Tooltip
+                            content="Complete project"
+                            className="!bg-opacity-60"
+                            placement="left"
+                            animate={{
+                              mount: { scale: 1, y: 0 },
+                              unmount: { scale: 0, y: 25 },
+                            }}
+                          >
+                            <Button className="!bg-green-500 !p-1">
+                              <TbCircleCheck className="text-[20px]" />
+                            </Button>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip
+                            content="Start project"
+                            className="!bg-opacity-60"
+                            placement="left"
+                            animate={{
+                              mount: { scale: 1, y: 0 },
+                              unmount: { scale: 0, y: 25 },
+                            }}
+                          >
+                            <Button
+                              className="!bg-orange-500 !p-1"
+                              onClick={() => handleStartProject(jobOrder)}
+                            >
+                              <TbPlayerPlay className="text-[20px]" />
+                            </Button>
+                          </Tooltip>
+                        )
+                      ) : null}
                       <Tooltip
-                        className="!bg-opacity-60"
                         content="View details"
+                        className="!bg-opacity-60"
                         placement="left"
                         animate={{
                           mount: { scale: 1, y: 0 },
@@ -429,8 +661,8 @@ const handleQuotationModal = async () => {
                         </Button>
                       </Tooltip>
                       <Tooltip
-                        className="!bg-opacity-60"
                         content="Cancel project"
+                        className="!bg-opacity-60"
                         placement="left"
                         animate={{
                           mount: { scale: 1, y: 0 },
@@ -512,8 +744,8 @@ const handleQuotationModal = async () => {
                       }
                     />
                   </div>
-                  <Button onClick={handleProceed} disabled={loading}>
-                    {loading ? (
+                  <Button onClick={handleProceed} disabled={buttonLoading}>
+                    {buttonLoading ? (
                       <span className="loading loading-dots loading-md"></span>
                     ) : (
                       <>Proceed to in progress</>
