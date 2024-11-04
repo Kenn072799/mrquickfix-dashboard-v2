@@ -38,8 +38,6 @@ export const updateJobOrder = async (req, res) => {
 
     const userID = job.userID;
 
-    console.log("User ID from request:", userID);
-
     if (!userID) {
         return res.status(400).json({ success: false, message: "User ID is required" });
     }
