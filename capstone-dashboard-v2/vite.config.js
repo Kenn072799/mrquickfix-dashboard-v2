@@ -11,7 +11,7 @@ export default defineConfig({
   },
   css: {
     postcss: {
-      config: './postcss.config.js',
+      config: './capstone-dashboard-v2/postcss.config.js',
     }
   }
 })
