@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "NODE_ENV=development nodemon backend/server.js",
+    "dev": "nodemon backend/server.js",
     "build": "npm install --production=false && npm install --prefix capstone-dashboard-v2 && npm run build --prefix capstone-dashboard-v2",
     "start": "node backend/server.js"
   },
@@ -13,6 +13,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "autoprefixer": "^10.4.20",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
     "connect-mongo": "^5.1.0",
