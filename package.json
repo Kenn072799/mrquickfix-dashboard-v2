@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon backend/server.js",
-    "build": "npm run build --prefix capstone-dashboard-v2",
+    "build": "npm install && npm install --prefix capstone-dashboard-v2 && npm run build --prefix capstone-dashboard-v2",
     "start": "node backend/server.js"
   },
   "type": "module",
