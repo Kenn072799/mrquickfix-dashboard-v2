@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon backend/server.js",
     "build": "npm install && npm install --prefix capstone-dashboard-v2 && npm run build --prefix capstone-dashboard-v2",
-    "start": "node backend/server.js"
+    "start": "node backend/server.js",
+    "render-postbuild": "npm install --prefix capstone-dashboard-v2 && npm run build --prefix capstone-dashboard-v2"
   },
   "type": "module",
   "keywords": [],
