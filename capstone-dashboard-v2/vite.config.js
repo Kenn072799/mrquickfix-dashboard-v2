@@ -8,10 +8,5 @@ export default defineConfig({
     proxy: {
       '/api': {target: 'http://localhost:5000'}
     }
-  },
-  css: {
-    postcss: {
-      config: './postcss.config.cjs',
-    },
   }
 })
