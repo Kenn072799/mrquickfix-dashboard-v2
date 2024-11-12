@@ -31,6 +31,7 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
   const [loading, setLoading] = useState(false);
 
   const [newJobOrder, setNewJobOrder] = useState({
+    projectID: "",
     clientFirstName: "",
     clientLastName: "",
     clientAddress: "",
@@ -45,6 +46,8 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
     jobInspectionDate: "",
     jobStatus: "",
     jobNotificationAlert: "",
+    jobCancellationReason: "",
+    jobPreviousStatus: "",
     createdBy: adminId,
     updatedBy: adminId,
   });
@@ -120,7 +123,7 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
   };
 
   return (
-    <div className="max-w-[500px]">
+    <div className="max-w-[500px] rounded-lg">
       <div className="flex cursor-pointer items-center justify-between rounded-t-md border border-b-0 border-secondary-300 bg-secondary-100 px-4 py-2">
         <Title>Add Job Order</Title>
         <div
@@ -132,147 +135,154 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
           </button>
         </div>
       </div>
-      <div className="flex flex-col gap-4 rounded-b-md border border-secondary-300 bg-white p-4">
-        {/* Name */}
-        <div className="flex gap-2">
+      <div className="max-h-[90vh] w-full overflow-auto p-4 rounded-b-md border border-secondary-300 bg-white">
+        <div className="flex flex-col gap-4">
+          {/* Name */}
+          <div className="flex gap-2">
+            <Input
+              value={newJobOrder.clientFirstName}
+              label="First name"
+              onChange={(e) =>
+                setNewJobOrder({
+                  ...newJobOrder,
+                  clientFirstName: e.target.value,
+                })
+              }
+            />
+            <Input
+              value={newJobOrder.clientLastName}
+              label="Last name"
+              onChange={(e) =>
+                setNewJobOrder({
+                  ...newJobOrder,
+                  clientLastName: e.target.value,
+                })
+              }
+            />
+          </div>
+          {/* Address */}
           <Input
-            value={newJobOrder.clientFirstName}
-            label="First name"
+            value={newJobOrder.clientAddress}
+            label="Home address"
             onChange={(e) =>
-              setNewJobOrder({
-                ...newJobOrder,
-                clientFirstName: e.target.value,
-              })
+              setNewJobOrder({ ...newJobOrder, clientAddress: e.target.value })
             }
           />
-          <Input
-            value={newJobOrder.clientLastName}
-            label="Last name"
-            onChange={(e) =>
-              setNewJobOrder({ ...newJobOrder, clientLastName: e.target.value })
+          {/* Email and Phone Number */}
+          <div className="flex gap-2">
+            <Input
+              value={newJobOrder.clientEmail}
+              label="Email address"
+              onChange={(e) =>
+                setNewJobOrder({ ...newJobOrder, clientEmail: e.target.value })
+              }
+            />
+            <Input
+              value={newJobOrder.clientPhone}
+              label="Phone number"
+              onChange={(e) =>
+                setNewJobOrder({ ...newJobOrder, clientPhone: e.target.value })
+              }
+            />
+          </div>
+          {/* Select Type of Job */}
+          <Select
+            value={newJobOrder.jobType}
+            label="Select Type of Job"
+            onChange={(value) =>
+              setNewJobOrder({ ...newJobOrder, jobType: value })
             }
-          />
-        </div>
-        {/* Address */}
-        <Input
-          value={newJobOrder.clientAddress}
-          label="Home address"
-          onChange={(e) =>
-            setNewJobOrder({ ...newJobOrder, clientAddress: e.target.value })
-          }
-        />
-        {/* Email and Phone Number */}
-        <div className="flex gap-2">
+          >
+            <Option value="Repairs">Repairs</Option>
+            <Option value="Renovation">Renovation</Option>
+            <Option value="Preventive Maintenance Services">
+              Preventive Maintenance Services
+            </Option>
+          </Select>
+          {/* Select Services */}
+          <label className="text-sm">Select Services:</label>
+          <div className="max-h-[104px] overflow-y-auto rounded border">
+            <List className="flex-col">
+              {servicesList.map((service, index) => (
+                <ListItem key={index} className="p-0">
+                  <label
+                    htmlFor={`service-checkbox-${index}`}
+                    className="flex w-full cursor-pointer items-center"
+                  >
+                    <Checkbox
+                      id={`service-checkbox-${index}`}
+                      checked={selectedOptions.includes(service)}
+                      onChange={() => handleToggleOption(service)}
+                    />
+                    <Typography variant="small">{service}</Typography>
+                  </label>
+                </ListItem>
+              ))}
+            </List>
+          </div>
+          <div className="flex items-center text-sm font-semibold">
+            <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
+            <span className="whitespace-nowrap px-2">
+              Scheduled project now
+            </span>
+            <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
+          </div>
+          {/* Upload Quotation File */}
           <Input
-            value={newJobOrder.clientEmail}
-            label="Email address"
-            onChange={(e) =>
-              setNewJobOrder({ ...newJobOrder, clientEmail: e.target.value })
-            }
+            type="file"
+            label="Upload Quotation"
+            className="!py-2"
+            onChange={handleFileChange}
+            disabled={inspectionDate}
           />
+          {/* Start and End Date */}
+          <div className="flex gap-2">
+            <Input
+              value={newJobOrder.jobStartDate}
+              disabled={!quotationUploaded}
+              type="date"
+              label="Start Date"
+              onChange={(e) =>
+                setNewJobOrder({ ...newJobOrder, jobStartDate: e.target.value })
+              }
+            />
+            <Input
+              value={newJobOrder.jobEndDate}
+              disabled={!quotationUploaded}
+              type="date"
+              label="End Date"
+              onChange={(e) =>
+                setNewJobOrder({ ...newJobOrder, jobEndDate: e.target.value })
+              }
+            />
+          </div>
+          <div className="flex items-center text-sm font-semibold">
+            <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
+            <span className="whitespace-nowrap px-2">
+              Scheduled inspection first
+            </span>
+            <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
+          </div>
+          {/* Inspection Date */}
           <Input
-            value={newJobOrder.clientPhone}
-            label="Phone number"
-            onChange={(e) =>
-              setNewJobOrder({ ...newJobOrder, clientPhone: e.target.value })
-            }
-          />
-        </div>
-        {/* Select Type of Job */}
-        <Select
-          value={newJobOrder.jobType}
-          label="Select Type of Job"
-          onChange={(value) =>
-            setNewJobOrder({ ...newJobOrder, jobType: value })
-          }
-        >
-          <Option value="Repairs">Repairs</Option>
-          <Option value="Renovation">Renovation</Option>
-          <Option value="Preventive Maintenance Services">
-            Preventive Maintenance Services
-          </Option>
-        </Select>
-        {/* Select Services */}
-        <label className="text-sm">Select Services:</label>
-        <div className="max-h-[104px] overflow-y-auto rounded border">
-          <List className="flex-col">
-            {servicesList.map((service, index) => (
-              <ListItem key={index} className="p-0">
-                <label
-                  htmlFor={`service-checkbox-${index}`}
-                  className="flex w-full cursor-pointer items-center"
-                >
-                  <Checkbox
-                    id={`service-checkbox-${index}`}
-                    checked={selectedOptions.includes(service)}
-                    onChange={() => handleToggleOption(service)}
-                  />
-                  <Typography variant="small">{service}</Typography>
-                </label>
-              </ListItem>
-            ))}
-          </List>
-        </div>
-        <div className="flex items-center text-sm font-semibold">
-          <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
-          <span className="whitespace-nowrap px-2">Scheduled project now</span>
-          <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
-        </div>
-        {/* Upload Quotation File */}
-        <Input
-          type="file"
-          label="Upload Quotation"
-          className="!py-2"
-          onChange={handleFileChange}
-          disabled={inspectionDate}
-        />
-        {/* Start and End Date */}
-        <div className="flex gap-2">
-          <Input
-            value={newJobOrder.jobStartDate}
-            disabled={!quotationUploaded}
+            value={newJobOrder.jobInspectionDate}
+            disabled={quotationUploaded}
             type="date"
-            label="Start Date"
-            onChange={(e) =>
-              setNewJobOrder({ ...newJobOrder, jobStartDate: e.target.value })
-            }
+            label="Inspection Date"
+            onChange={handleSchedInspectionChange}
           />
-          <Input
-            value={newJobOrder.jobEndDate}
-            disabled={!quotationUploaded}
-            type="date"
-            label="End Date"
-            onChange={(e) =>
-              setNewJobOrder({ ...newJobOrder, jobEndDate: e.target.value })
-            }
-          />
+          <Button
+            className="!bg-primary-500"
+            onClick={handleAddJobOrder}
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="loading loading-dots loading-sm h-1 py-2"></span>
+            ) : (
+              "Add Job Order"
+            )}
+          </Button>
         </div>
-        <div className="flex items-center text-sm font-semibold">
-          <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
-          <span className="whitespace-nowrap px-2">
-            Scheduled inspection first
-          </span>
-          <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
-        </div>
-        {/* Inspection Date */}
-        <Input
-          value={newJobOrder.jobInspectionDate}
-          disabled={quotationUploaded}
-          type="date"
-          label="Inspection Date"
-          onChange={handleSchedInspectionChange}
-        />
-        <Button
-          className="!bg-primary-500"
-          onClick={handleAddJobOrder}
-          disabled={loading}
-        >
-          {loading ? (
-            <span className="loading loading-dots loading-md"></span>
-          ) : (
-            "Add Job Order"
-          )}
-        </Button>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import SignupAdmin from "../components/account-management/SignupAdmin";
 import { Title } from "../components/props/Title";
 import { Button } from "../components/props/button";
@@ -6,6 +6,10 @@ import { TbUserPlus } from "react-icons/tb";
 import AdminTable from "../components/table/AdminTable";
 
 const AccountManagement = () => {
+  useEffect(() => {
+    document.title = "Mr. Quick Fix | Account Management";
+  }, []);
+
   const [isOpen, setIsOpen] = useState(false);
 
   const openForm = () => {

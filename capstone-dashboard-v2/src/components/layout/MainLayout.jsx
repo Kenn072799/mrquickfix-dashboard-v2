@@ -13,7 +13,7 @@ const MainLayout = () => {
         {isLoggedIn && <SideBar />}
         <div className="flex w-full flex-col">
           {isLoggedIn && <NavBar />}
-          <div className="bg-secondary-50">
+          <div>
             <Outlet />
           </div>
         </div>

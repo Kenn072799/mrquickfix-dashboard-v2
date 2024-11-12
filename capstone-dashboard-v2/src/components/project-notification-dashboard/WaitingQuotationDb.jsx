@@ -1,16 +1,36 @@
-import React from "react";
-import { TbCalendarDollar } from "react-icons/tb";
+import React, { useEffect, useState } from "react";
+import { TbReportMoney } from "react-icons/tb";
 
-const waitingQuatation = 2;
+const WaitingQuotationDb = ({ projects = [] }) => {
+  const [readyForQuotationCount, setReadyForQuotationCount] = useState(0);
 
-const WaitingQuotationDb = () => {
+  useEffect(() => {
+    const readyForQuotationProjects = projects.filter((project) => {
+      return (
+        project.jobStatus === "on process" &&
+        project.jobNotificationAlert === "ready for quotation"
+      );
+    });
+
+    setReadyForQuotationCount(readyForQuotationProjects.length);
+  }, [projects]);
+
   return (
-    <div className="round rounded-sm border border-green-600 bg-green-200 text-green-600">
+    <div
+      className={`round w-full rounded-sm ${
+        readyForQuotationCount === 0
+          ? "border border-secondary-200 text-secondary-300"
+          : "bg-secondary-200 font-bold text-secondary-950"
+      }`}
+    >
       <div className="flex h-full items-center px-3 py-1">
-        <TbCalendarDollar className="mr-3 text-[26px]" />
+        <TbReportMoney className="mr-3 text-[20px]" />
         <span>
-          {waitingQuatation} project{waitingQuatation !== 1 ? "s" : ""} waiting
-          for quotation.
+          {readyForQuotationCount === 0
+            ? "No projects ready for quotation."
+            : `${readyForQuotationCount} project${
+                readyForQuotationCount !== 1 ? "s" : ""
+              } ready for quotation.`}
         </span>
       </div>
     </div>

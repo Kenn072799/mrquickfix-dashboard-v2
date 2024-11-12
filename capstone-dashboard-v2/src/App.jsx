@@ -2,16 +2,17 @@ import React, { useEffect } from "react";
 import { useRoutes, Navigate } from "react-router-dom";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
+import MainLayout from "./components/layout/MainLayout";
+import PrivateRoute from "./components/layout/PrivateRoute";
 
 // Pages
 import Dashboard from "./pages/Dashboard";
 import TrackJobOrder from "./pages/TrackJobOrder";
 import Login from "./pages/Login";
 import AccountManagement from "./pages/AccountManagement";
-import MainLayout from "./components/layout/MainLayout";
-import PrivateRoute from "./components/layout/PrivateRoute";
 import ForgotPassword from "./components/login/ForgotPassword";
 import ResetPassword from "./components/login/ResetPassword";
+import Report from "./pages/Report";
 
 const isTokenExpired = (token) => {
   if (!token) return true; // No token means expired
@@ -27,7 +28,7 @@ function App() {
         {},
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
           },
         },
       );
@@ -78,6 +79,7 @@ function App() {
             { path: "/", element: <Dashboard /> },
             { path: "/track-job-orders", element: <TrackJobOrder /> },
             { path: "/account-management", element: <AccountManagement /> },
+            { path: "/reports", element: <Report /> },
           ],
         },
       ],

@@ -112,11 +112,15 @@ const SignupAdmin = ({ onClose }) => {
         <Title>Sign Up</Title>
         <div
           className="flex cursor-pointer items-center rounded-full p-2 text-secondary-900 hover:bg-secondary-200 active:bg-secondary-200/50 active:text-secondary-500"
-          onClick={onClose}
+          onClick={activeStep == 1 || activeStep == 2 ? "" : onClose}
         >
-          <button>
-            <TbX />
-          </button>
+          {activeStep == 0 ? (
+            <button>
+              <TbX />
+            </button>
+          ) : (
+            ""
+          )}
         </div>
       </div>
       <div className="flex flex-col gap-4 rounded-b-md border border-secondary-300 bg-white p-4">

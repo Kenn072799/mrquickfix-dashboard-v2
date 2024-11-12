@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Title } from "../components/props/Title";
 import MainTable from "../components/table/MainTable";
 import AddJobOrderForm from "../components/form/AddJobOrderForm";
@@ -12,6 +12,10 @@ const TrackJobOrder = () => {
   const [toggleAddJobOrderForm, setToggleAddJobOrderForm] = useState(false);
   const [selectedJobOrder, setSelectedJobOrder] = useState(null);
   const [jobOrderData, setJobOrderData] = useState({});
+
+  useEffect(() => {
+    document.title = "Mr. Quick Fix | Track Job Order";
+  }, []);
 
   const setNewJobOrder = (newJobOrder) => {
     setJobOrderData(newJobOrder);
@@ -38,7 +42,7 @@ const TrackJobOrder = () => {
   };
 
   return (
-    <div className="relative mt-16 lg:p-8">
+    <div className="mt-16 min-h-screen p-4 lg:p-8">
       <div className="pb-4">
         <Title variant="secondaryBold" size="xxxl">
           Track Job Order

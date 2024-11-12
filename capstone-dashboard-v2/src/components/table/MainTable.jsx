@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Title } from "../props/Title";
 import {
   Button,
   Chip,
   Input,
+  Textarea,
   Tooltip,
   Typography,
 } from "@material-tailwind/react";
@@ -28,12 +29,16 @@ import {
   TbPlayerPlay,
   TbCircleCheck,
   TbCalendarClock,
+  TbChevronRight,
+  TbChevronLeft,
+  TbArchive,
 } from "react-icons/tb";
 import Relax from "../../assets/undraw_A_moment_to_relax_re_v5gv.png";
 import { useJobAlerts } from "../../data/useJobAlerts";
 import { useJobAlertProgress } from "../../data/useJobAlertProgress";
 
 const MainTable = ({ setSelectedJobOrder }) => {
+  const [currentPage, setCurrentPage] = useState(1);
   const [entriesToShow, setEntriesToShow] = useState(10);
   const [statusFilter, setStatusFilter] = useState("All");
   const { fetchProjects, projects, updateJobOrder, alertJobOrder } =
@@ -45,11 +50,60 @@ const MainTable = ({ setSelectedJobOrder }) => {
   const [quotationUploaded, setQuotationUploaded] = useState(false);
   const [finishInspectionStatus, setFinishInspectionStatus] = useState({});
   const [startProjectStatus, setStartProjectStatus] = useState({});
-
+  const [openCancelModal, setOpenCancelModal] = useState(false);
+  const [selectedJobOrderForCancel, setSelectedJobOrderForCancel] =
+    useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const statusOrder = ["on process", "in progress", "completed", "cancelled"];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const throttle = (func, limit) => {
+  const { alertInspectionTomorrow, alertInspectionToday, alertWaitingUpdate } =
+    useJobAlerts(today);
+
+  const {
+    alertProjectStartTomorrow,
+    alertProjectStartToday,
+    alertProjectFinishToday,
+    alertProjectDelayed,
+    alertProjectStartAndFinishToday,
+    alertProjectExtended,
+    alertProjectStartInPast,
+    alertProjectExtendedFinishToday,
+  } = useJobAlertProgress(today);
+
+  const throttledFetchProjects = useCallback(throttle(fetchProjects, 60000), [
+    fetchProjects,
+  ]);
+
+  useEffect(() => {
+    const initializeData = async () => {
+      setLoading(true);
+      try {
+        await fetchProjects();
+        const initialStartProjectStatus = {};
+        projects.forEach((jobOrder) => {
+          if (jobOrder.jobNotificationAlert === "ongoing project") {
+            initialStartProjectStatus[jobOrder._id] = true;
+          }
+        });
+        setStartProjectStatus(initialStartProjectStatus);
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeData();
+
+    const intervalId = setInterval(throttledFetchProjects, 10000);
+
+    return () => clearInterval(intervalId);
+  }, [throttledFetchProjects]);
+
+  function throttle(func, limit) {
     let lastFunc;
     let lastRan;
 
@@ -71,58 +125,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
         );
       }
     };
-  };
-
-  const { alertInspectionTomorrow, alertInspectionToday, alertWaitingUpdate } =
-    useJobAlerts(today);
-
-  const {
-    alertProjectStartTomorrow,
-    alertProjectStartToday,
-    alertProjectFinishToday,
-    alertProjectDelayed,
-    alertProjectStartAndFinishToday,
-    alertProjectExtended,
-    alertProjectStartInPast,
-    alertProjectExtendedFinishToday,
-  } = useJobAlertProgress(today);
-
-  useEffect(() => {
-    const initializeData = async () => {
-      setLoading(true);
-      try {
-        await fetchProjects();
-        const statusFromDatabase = {};
-        projects.forEach((jobOrder) => {
-          if (jobOrder.jobNotificationAlert === "ongoing project") {
-            statusFromDatabase[jobOrder._id] = true;
-          }
-        });
-        setStartProjectStatus(statusFromDatabase);
-      } catch (error) {
-        console.error("Error fetching projects:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeData();
-
-    const throttledFetchProjects = throttle(async () => {
-      setLoading(true);
-      try {
-        await fetchProjects();
-      } catch (error) {
-        console.error("Error fetching projects during interval:", error);
-      } finally {
-        setLoading(false);
-      }
-    }, 120000);
-
-    const intervalId = setInterval(throttledFetchProjects, 10000);
-
-    return () => clearInterval(intervalId);
-  }, [fetchProjects]);
+  }
 
   const jobNotificationAlertProcess = [
     {
@@ -172,7 +175,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
       condition: (jobOrder) =>
         jobOrder.jobStatus === "in progress" &&
         alertProjectStartInPast(jobOrder) &&
-        !startProjectStatus[jobOrder._id],
+        jobOrder.jobNotificationAlert !== "ongoing project",
     },
     {
       message: "Project starts and finishes today",
@@ -195,7 +198,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
         jobOrder.jobStatus === "in progress" && alertProjectDelayed(jobOrder),
     },
     {
-      message: "Project has been extended",
+      message: "Project extended",
       icon: TbCalendarPlus,
       condition: (jobOrder) =>
         jobOrder.jobStatus === "in progress" && alertProjectExtended(jobOrder),
@@ -211,8 +214,9 @@ const MainTable = ({ setSelectedJobOrder }) => {
       message: "Ongoing project",
       icon: TbCalendarClock,
       condition: (jobOrder) =>
-        jobOrder.jobStatus === "in progress" &&
-        startProjectStatus[jobOrder._id],
+        (jobOrder.jobStatus === "in progress" &&
+          startProjectStatus[jobOrder._id]) ||
+        jobOrder.jobNotificationAlert === "ongoing project",
     },
   ];
 
@@ -316,8 +320,31 @@ const MainTable = ({ setSelectedJobOrder }) => {
     setStatusFilter(e.target.value);
   };
 
-  const filteredData = projects.filter(
-    (jobOrder) => statusFilter === "All" || jobOrder.jobStatus === statusFilter,
+  const filteredData = projects.filter((jobOrder) => {
+    const isNotArchived =
+      jobOrder.jobStatus !== "archived" && jobOrder.jobStatus !== "inquiry";
+    const matchesStatus =
+      statusFilter === "All" || jobOrder.jobStatus === statusFilter;
+    const matchesSearchTerm =
+      `${jobOrder.clientFirstName} ${jobOrder.clientLastName} && ${jobOrder.projectID}`
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+
+    return isNotArchived && matchesStatus && matchesSearchTerm;
+  });
+
+  const sortedData = filteredData.sort((a, b) => {
+    return statusOrder.indexOf(a.jobStatus) - statusOrder.indexOf(b.jobStatus);
+  });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [entriesToShow]);
+
+  const totalPages = Math.ceil(filteredData.length / entriesToShow);
+  const paginatedData = sortedData.slice(
+    (currentPage - 1) * entriesToShow,
+    currentPage * entriesToShow,
   );
 
   const handleQuotationModal = async () => {
@@ -369,6 +396,54 @@ const MainTable = ({ setSelectedJobOrder }) => {
     }
   };
 
+  const handleCompleteProject = async (jobOrder) => {
+    try {
+      const result = await Swal.fire({
+        title: "Do you want to mark this project as completed?",
+        showCancelButton: true,
+        confirmButtonText: "Yes, Complete",
+        icon: "question",
+      });
+
+      if (result.isConfirmed) {
+        const userID = localStorage.getItem("userID");
+
+        if (!userID) {
+          Swal.fire(
+            "Error",
+            "User ID is required to update the job order.",
+            "error",
+          );
+          return;
+        }
+
+        const updatedJob = {
+          ...jobOrder,
+          jobStatus: "completed",
+          updatedBy: userID,
+        };
+
+        const { success, message } = await updateJobOrder(
+          jobOrder._id,
+          updatedJob,
+        );
+
+        if (!success) {
+          Swal.fire("Oops...", message, "error");
+        } else {
+          Swal.fire(
+            "Completed!",
+            "Job order marked as completed successfully!",
+            "success",
+          );
+        }
+      }
+    } catch (error) {
+      Swal.fire("Error", "Failed to update job order.", "error");
+      console.error("Error updating job order:", error);
+    }
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     setQuotationUploaded(!!file);
@@ -394,6 +469,119 @@ const MainTable = ({ setSelectedJobOrder }) => {
     handleQuotationModal();
   };
 
+  const handleArchiveProject = async (jobOrder) => {
+    try {
+      const result = await Swal.fire({
+        title: "Do you want to archive this job order?",
+        text: "This action will move the job order to the report list.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Yes, Archive",
+        cancelButtonText: "No, Keep",
+      });
+
+      if (result.isConfirmed) {
+        const userID = localStorage.getItem("userID");
+
+        if (!userID) {
+          Swal.fire(
+            "Error",
+            "User ID is required to archive the job order.",
+            "error",
+          );
+          return;
+        }
+
+        const updatedJob = {
+          ...jobOrder,
+          jobStatus: "archived",
+          originalStatus: jobOrder.jobStatus,
+          updatedBy: userID,
+        };
+
+        const { success, message } = await updateJobOrder(
+          jobOrder._id,
+          updatedJob,
+        );
+
+        if (!success) {
+          Swal.fire("Oops...", message, "error");
+        } else {
+          Swal.fire("Archived!", "Job order archived successfully!", "success");
+        }
+      }
+    } catch (error) {
+      Swal.fire("Error", "Failed to archive job order.", "error");
+      console.error("Error archiving job order:", error);
+    }
+  };
+
+  const handleCancelProject = async () => {
+    if (!cancelReason) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Please provide a reason for cancellation.",
+      });
+      return;
+    }
+
+    if (!selectedJobOrderForCancel || !selectedJobOrderForCancel.jobStatus) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No previous status available for cancellation.",
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: "Do you want to cancel this project?",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Cancel",
+      icon: "question",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        setButtonLoading(true);
+
+        const updatedJob = {
+          ...selectedJobOrderForCancel,
+          jobStatus: "cancelled",
+          jobPreviousStatus: selectedJobOrderForCancel.jobStatus,
+          updatedBy: localStorage.getItem("userID"),
+          jobCancellationReason: cancelReason,
+        };
+
+        setCancelReason("");
+
+        const { success, message } = await updateJobOrder(
+          selectedJobOrderForCancel._id,
+          updatedJob,
+        );
+
+        setButtonLoading(false);
+
+        if (!success) {
+          Swal.fire("Oops...", message, "error");
+        } else {
+          Swal.fire(
+            "Cancelled!",
+            "Job order cancelled successfully!",
+            "success",
+          );
+          setOpenCancelModal(false);
+        }
+      } catch (error) {
+        setButtonLoading(false);
+        Swal.fire("Error", "Failed to cancel job order.", "error");
+
+        console.error("Error canceling job order:", error);
+      }
+    }
+  };
+
   return (
     <div className="border border-secondary-200 bg-white">
       <div className="border-b border-secondary-200 bg-secondary-100 px-4 py-2">
@@ -403,67 +591,72 @@ const MainTable = ({ setSelectedJobOrder }) => {
       </div>
       <div className="p-4">
         <div className="flex justify-between pb-4">
-          {/* entries */}
-          <div className="flex items-center">
-            <Title variant="secondaryNormal" size="md">
-              Show
-            </Title>
-            <select
-              name="entries"
-              id="entries"
-              className="mx-2 rounded-sm border border-secondary-200 px-3 py-1 text-base outline-none ring-secondary-600 focus:ring-2"
-              value={entriesToShow}
-              onChange={(e) => setEntriesToShow(Number(e.target.value))}
-            >
-              <option value="10">10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
-            <Title variant="secondaryNormal" size="md">
-              entries
-            </Title>
-          </div>
-
           {/* search bar */}
           <div className="flex items-center">
-            <Title variant="secondaryNormal" size="md">
+            <Title variant="secondarySemibold" size="sm">
               Search:
             </Title>
-            <input className="mx-2 rounded-sm border border-secondary-200 px-3 py-1 text-base outline-none ring-secondary-600 focus:ring-2" />
+            <input
+              className="mx-2 rounded-full border-secondary-200 bg-secondary-50 px-3 py-1 text-base outline-none ring-secondary-600 focus:ring-2"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="name or pid"
+            />
           </div>
-        </div>
 
-        {/* filter by status */}
-        <div className="flex items-center pb-4">
-          <Title variant="secondaryNormal" size="md">
-            Status:
-          </Title>
-          <select
-            name="statusFilter"
-            id="statusFilter"
-            className="mx-2 rounded-sm border border-secondary-200 px-3 py-1 text-base outline-none ring-secondary-600 focus:ring-2"
-            value={statusFilter}
-            onChange={handleStatusFilterChange}
-          >
-            <option value="All">All</option>
-            <option value="on process">On process</option>
-            <option value="in progress">In progress</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+          <div className="flex items-center gap-4">
+            {/* entries */}
+            <div className="flex items-center">
+              <Title variant="secondarySemibold" size="sm">
+                Show:
+              </Title>
+              <select
+                name="entries"
+                id="entries"
+                className="mx-2 rounded-sm border border-secondary-200 px-3 py-1 text-base outline-none ring-secondary-600 focus:ring-2"
+                value={entriesToShow}
+                onChange={(e) => setEntriesToShow(Number(e.target.value))}
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+
+            {/* filter by status */}
+            <div className="flex items-center">
+              <Title variant="secondarySemibold" size="sm">
+                Status:
+              </Title>
+              <select
+                name="statusFilter"
+                id="statusFilter"
+                className="mx-2 rounded-sm border border-secondary-200 px-3 py-1 text-base outline-none ring-secondary-600 focus:ring-2"
+                value={statusFilter}
+                onChange={handleStatusFilterChange}
+              >
+                <option value="All">All</option>
+                <option value="on process">On process</option>
+                <option value="in progress">In progress</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* table */}
         <div className="overflow-x-auto">
-          <table className="table border border-secondary-200 bg-white text-base">
+          <table className="table border-b border-secondary-200 bg-white text-base">
             <thead>
               <tr className="border-b-2 border-secondary-200 text-base text-primary-500">
                 <th className="w-10">No</th>
+                <th className="min-w-[100px]">Project ID</th>
                 <th className="min-w-[150px]">First Name</th>
                 <th className="min-w-[150px]">Last Name</th>
                 <th className="min-w-[200px]">Job Type</th>
-                <th className="min-w-[150px]">Status</th>
+                <th className="min-w-[130px]">Status</th>
                 <th className="w-full">Alert</th>
                 <th className="min-w-[150px]">Action</th>
               </tr>
@@ -471,22 +664,23 @@ const MainTable = ({ setSelectedJobOrder }) => {
             {loading ? (
               <tbody>
                 <tr>
-                  <td colSpan="7" className="h-[400px] text-center">
+                  <td colSpan="8" className="h-[400px] text-center">
                     <span className="loading loading-bars loading-lg"></span>
                   </td>
                 </tr>
               </tbody>
-            ) : projects.length > 0 ? (
+            ) : paginatedData.length > 0 ? (
               <tbody>
-                {filteredData.slice(0, entriesToShow).map((jobOrder, index) => (
+                {paginatedData.map((jobOrder, index) => (
                   <tr
                     key={jobOrder.id || index}
-                    className="hover:bg-secondary-50"
+                    className="text-sm uppercase hover:bg-secondary-50"
                   >
                     <td>{index + 1}</td>
+                    <td>{jobOrder.projectID}</td>
                     <td>{jobOrder.clientFirstName}</td>
                     <td>{jobOrder.clientLastName}</td>
-                    <td>{jobOrder.jobType}</td>
+                    <td>{jobOrder.jobType || "Not Specified Yet"}</td>
                     <td>
                       <div className="flex font-semibold">
                         <Chip
@@ -570,6 +764,25 @@ const MainTable = ({ setSelectedJobOrder }) => {
                     </td>
                     <td className="flex items-center justify-end gap-3">
                       {/* Actions based on job status */}
+                      {jobOrder.jobStatus === "completed" ||
+                      jobOrder.jobStatus === "cancelled" ? (
+                        <Tooltip
+                          content="Archive"
+                          className="!bg-opacity-60"
+                          placement="left"
+                          animate={{
+                            mount: { scale: 1, y: 0 },
+                            unmount: { scale: 0, y: 25 },
+                          }}
+                        >
+                          <Button
+                            className="!bg-gray-500 !p-1"
+                            onClick={() => handleArchiveProject(jobOrder)}
+                          >
+                            <TbArchive className="text-[20px]" />
+                          </Button>
+                        </Tooltip>
+                      ) : null}
                       {jobOrder.jobStatus === "on process" ? (
                         jobOrder.jobNotificationAlert ===
                         "ready for quotation" ? (
@@ -613,7 +826,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
                       ) : jobOrder.jobStatus === "in progress" ? (
                         jobOrder.jobNotificationAlert === "ongoing project" ? (
                           <Tooltip
-                            content="Complete project"
+                            content="Complete Project"
                             className="!bg-opacity-60"
                             placement="left"
                             animate={{
@@ -621,13 +834,16 @@ const MainTable = ({ setSelectedJobOrder }) => {
                               unmount: { scale: 0, y: 25 },
                             }}
                           >
-                            <Button className="!bg-green-500 !p-1">
+                            <Button
+                              className="!bg-green-500 !p-1"
+                              onClick={() => handleCompleteProject(jobOrder)}
+                            >
                               <TbCircleCheck className="text-[20px]" />
                             </Button>
                           </Tooltip>
                         ) : (
                           <Tooltip
-                            content="Start project"
+                            content="Start Project"
                             className="!bg-opacity-60"
                             placement="left"
                             animate={{
@@ -645,7 +861,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
                         )
                       ) : null}
                       <Tooltip
-                        content="View details"
+                        content="View Details"
                         className="!bg-opacity-60"
                         placement="left"
                         animate={{
@@ -660,19 +876,28 @@ const MainTable = ({ setSelectedJobOrder }) => {
                           <TbEye className="text-[20px]" />
                         </Button>
                       </Tooltip>
-                      <Tooltip
-                        content="Cancel project"
-                        className="!bg-opacity-60"
-                        placement="left"
-                        animate={{
-                          mount: { scale: 1, y: 0 },
-                          unmount: { scale: 0, y: 25 },
-                        }}
-                      >
-                        <Button className="!bg-red-500 !p-1">
-                          <TbCircleX className="text-[20px]" />
-                        </Button>
-                      </Tooltip>
+                      {jobOrder.jobStatus === "cancelled" ||
+                      jobOrder.jobStatus === "completed" ? null : (
+                        <Tooltip
+                          content="Cancel Project"
+                          className="!bg-opacity-60"
+                          placement="left"
+                          animate={{
+                            mount: { scale: 1, y: 0 },
+                            unmount: { scale: 0, y: 25 },
+                          }}
+                        >
+                          <Button
+                            className="!bg-red-500 !p-1"
+                            onClick={() => {
+                              setSelectedJobOrderForCancel(jobOrder);
+                              setOpenCancelModal(true);
+                            }}
+                          >
+                            <TbCircleX className="text-[20px]" />
+                          </Button>
+                        </Tooltip>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -680,7 +905,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
             ) : (
               <tbody>
                 <tr>
-                  <td colSpan="7" className="text-center capitalize">
+                  <td colSpan="8" className="text-center capitalize">
                     <img
                       src={Relax}
                       alt="Relax"
@@ -693,7 +918,32 @@ const MainTable = ({ setSelectedJobOrder }) => {
             )}
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        <div className="mt-4 flex justify-center gap-8">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="cursor-pointer"
+          >
+            <TbChevronLeft className="text-secondary-500 hover:text-secondary-800" />
+          </button>
+          <span className="text-sm text-secondary-500">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
+            className="cursor-pointer"
+          >
+            <TbChevronRight className="text-secondary-500 hover:text-secondary-800" />
+          </button>
+        </div>
       </div>
+
+      {/* Quotation Modal */}
       {openQuotationModal && (
         <>
           <div className="fixed inset-0 z-[60] flex items-center justify-center rounded-md bg-black/20">
@@ -746,9 +996,70 @@ const MainTable = ({ setSelectedJobOrder }) => {
                   </div>
                   <Button onClick={handleProceed} disabled={buttonLoading}>
                     {buttonLoading ? (
-                      <span className="loading loading-dots loading-md"></span>
+                      <span className="loading loading-dots loading-sm h-1 py-2"></span>
                     ) : (
                       <>Proceed to in progress</>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Cancel Modal */}
+      {openCancelModal && selectedJobOrderForCancel && (
+        <>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center rounded-md bg-black/20">
+            <div className="animate-fade-down animate-duration-[400ms] animate-ease-out">
+              <div className="w-[400px] max-w-[500px]">
+                <div className="flex items-center justify-between rounded-t-md border border-b-0 border-secondary-300 bg-secondary-100 px-4 py-2">
+                  <Title>Cancel Project</Title>
+                  <div
+                    className="flex cursor-pointer items-center rounded-full p-2 text-secondary-900 hover:bg-secondary-200 active:bg-secondary-200/50 active:text-secondary-500"
+                    onClick={() => setOpenCancelModal(false)}
+                  >
+                    <button>
+                      <TbX />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 rounded-b-md border border-secondary-300 bg-white p-4">
+                  <div className="rounded-lg border border-red-500 bg-red-50 p-1">
+                    <span className="flex items-center text-xs">
+                      <TbExclamationCircle className="mr-1 text-red-500" />
+                      <span className="mr-1 font-bold">WARNING!</span>Once it
+                      has been cancelled, you can't undo it.
+                    </span>
+                  </div>
+                  <div className="flex">
+                    <span className="pr-1 font-semibold"> Client name:</span>
+                    <div className="uppercase">
+                      {selectedJobOrderForCancel.clientFirstName}{" "}
+                      {selectedJobOrderForCancel.clientLastName}
+                    </div>
+                  </div>
+                  <div className="flex">
+                    <span className="pr-1 font-semibold">Current status:</span>
+                    <div className="uppercase">
+                      {selectedJobOrderForCancel.jobStatus}
+                    </div>
+                  </div>
+                  <Textarea
+                    label="Reason for cancellation"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                  />
+                  <Button
+                    onClick={handleCancelProject}
+                    disabled={buttonLoading}
+                    className="!bg-red-500"
+                  >
+                    {buttonLoading ? (
+                      <span className="loading loading-dots loading-md"></span>
+                    ) : (
+                      <>Cancel Project</>
                     )}
                   </Button>
                 </div>

@@ -3,13 +3,12 @@ import { Title } from "../props/Title";
 import {
   Button,
   Checkbox,
-  Chip,
   Input,
   List,
   ListItem,
   Option,
   Select,
-  Tooltip,
+  Textarea,
   Typography,
 } from "@material-tailwind/react";
 import {
@@ -17,8 +16,6 @@ import {
   TbEdit,
   TbCheck,
   TbEditOff,
-  TbFilePlus,
-  TbFlagCheck,
   TbExclamationCircle,
 } from "react-icons/tb";
 import { useJobOrderData } from "../../data/JobOrderData";
@@ -42,6 +39,7 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
   const [updatedProject, setUpdatedProject] = useState(jobOrder);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { updateJobOrder } = useJobOrderData();
   const { getLoggedInAdmin, admin } = useAdminData();
   const [admins, setAdmins] = useState([]);
@@ -58,12 +56,15 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
   useEffect(() => {
     const fetchAdmins = async () => {
       try {
+        setIsLoading(true);
         const fetchedAdmins = await getLoggedInAdmin();
         if (fetchedAdmins) {
           setAdmins([fetchedAdmins]);
         }
       } catch (err) {
         console.error("Error fetching admins:", err);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -153,7 +154,7 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
   };
 
   return (
-    <div className="relative max-w-[500px]">
+    <div className="relative max-w-[500px] rounded-lg">
       <div className="flex cursor-pointer items-center justify-between rounded-t-md border border-b-0 border-secondary-300 bg-secondary-100 px-4 py-2">
         <Title>
           Current Status:
@@ -168,145 +169,80 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
           </button>
         </div>
       </div>
-      <div className="flex flex-col gap-4 rounded-b-md border border-secondary-300 bg-white p-4">
-        <div className="flex justify-end">
-          <div className="flex justify-end gap-2">
-            {editMode ? (
-              <>
-                <Button
-                  className="!flex !items-center !bg-red-500 !p-2 !shadow-none"
-                  onClick={handleCancelEdit}
-                >
-                  Cancel edit
-                  <TbEditOff className="ml-2 text-[16px]" />
-                </Button>
-                {hasUnsavedChanges && (
+      <div className="max-h-[90vh] overflow-y-auto rounded-b-md border border-secondary-300 bg-white p-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {editMode ? (
+                <>
                   <Button
-                    className="flex items-center bg-blue-500 !p-2 !shadow-none"
-                    onClick={handleUpdateProject}
-                    disabled={loading}
+                    className="!flex !items-center !bg-red-500 !p-2 !shadow-none"
+                    onClick={handleCancelEdit}
                   >
-                    {loading ? (
-                      <span className="loading loading-dots loading-md"></span>
-                    ) : (
-                      <>
-                        Save changes
-                        <TbCheck className="ml-2 text-[16px]" />
-                      </>
-                    )}
+                    Cancel edit
+                    <TbEditOff className="ml-2 text-[16px]" />
                   </Button>
-                )}
-              </>
-            ) : (
-              <Button
-                className="flex items-center bg-blue-500 !p-2 !shadow-none"
-                onClick={handleEditMode}
-              >
-                Edit Details
-                <TbEdit className="ml-2 text-[16px]" />
-              </Button>
-            )}
+                  {hasUnsavedChanges && (
+                    <Button
+                      className="flex items-center bg-blue-500 !p-2 !shadow-none"
+                      onClick={handleUpdateProject}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <span className="loading loading-dots loading-sm h-1 py-2"></span>
+                      ) : (
+                        <>
+                          Save changes
+                          <TbCheck className="ml-2 text-[16px]" />
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </>
+              ) : jobOrder.jobStatus === "in progress" ||
+                jobOrder.jobStatus === "on process" ||
+                jobOrder.jobStatus === "inquiry" ? (
+                <Button
+                  className="flex items-center bg-blue-500 !p-2 !shadow-none"
+                  onClick={handleEditMode}
+                >
+                  Edit Details
+                  <TbEdit className="ml-2 text-[16px]" />
+                </Button>
+              ) : null}
+            </div>
           </div>
-        </div>
 
-        {jobOrder.jobStatus === "on process" && (
-          <>
-            <div className="flex items-center text-sm font-semibold">
-              <span className="whitespace-nowrap pr-2 text-red-400">
-                Inspection Schedule
-              </span>
-              <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
-            </div>
-            <Input
-              id="jobInspectionDate"
-              type={editMode ? "date" : "text"}
-              name="jobInspectionDate"
-              label="Inspection Date"
-              value={
-                editMode
-                  ? updatedProject.jobInspectionDate
-                  : new Date(jobOrder.jobInspectionDate).toLocaleDateString(
-                      "en-US",
-                    )
-              }
-              onChange={(e) =>
-                editMode &&
-                setUpdatedProject({
-                  ...updatedProject,
-                  jobInspectionDate: e.target.value,
-                })
-              }
-              readOnly={!editMode}
-            />
-          </>
-        )}
+          {jobOrder.jobStatus === "inquiry" && (
+            <>
+              <Textarea
+                id="clientMessage"
+                name="clientMessage"
+                label="Client Message"
+                readOnly
+                value={jobOrder.clientMessage}
+              />
+              
+            </>
+          )}
 
-        {jobOrder.jobStatus === "in progress" && (
-          <>
-            <div className="flex items-center text-sm font-semibold">
-              <span className="whitespace-nowrap pr-2 text-red-400">
-                Project Schedule
-              </span>
-              <div className="my-2 h-[1px] w-full bg-secondary-200"></div>
-            </div>
-            {/* Extended Date - shows only if the project is delayed or extended */}
-            {(alertProjectExtended(jobOrder) ||
-              alertProjectDelayed(jobOrder) ||
-              alertProjectExtendedFinishToday(jobOrder)) && (
-              <>
-                {alertProjectDelayed(jobOrder) && (
-                  <div className="rounded-lg border border-green-500 bg-green-50 p-1">
-                    <span className="flex items-center text-xs">
-                      <TbExclamationCircle className="mr-1 text-red-500" />
-                      Did you want to extend it?
-                    </span>
-                  </div>
-                )}
-                {alertProjectExtendedFinishToday(jobOrder) && (
-                  <div className="rounded-lg border border-green-500 bg-green-50 p-1">
-                    <span className="flex items-center text-xs">
-                      <TbExclamationCircle className="mr-1 text-red-500" />
-                      Did you want to extend it again?
-                    </span>
-                  </div>
-                )}
-                <Input
-                  id="jobExtendedDate"
-                  type={editMode ? "date" : "text"}
-                  name="jobExtendedDate"
-                  label="Extended Date"
-                  value={
-                    editMode
-                      ? updatedProject.jobExtendedDate
-                      : jobOrder.jobExtendedDate
-                        ? new Date(jobOrder.jobExtendedDate).toLocaleDateString(
-                            "en-US",
-                          )
-                        : ""
-                  }
-                  onChange={(e) =>
-                    editMode &&
-                    setUpdatedProject({
-                      ...updatedProject,
-                      jobExtendedDate: e.target.value,
-                    })
-                  }
-                  readOnly={!editMode}
-                />
-              </>
-            )}
-
-            <div className="flex gap-2">
-              {/* Start Date */}
+          {jobOrder.jobStatus === "on process" && (
+            <>
+              <div className="flex items-center text-sm font-semibold">
+                <span className="whitespace-nowrap pr-2 text-red-400">
+                  Inspection Schedule
+                </span>
+                <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
+              </div>
               <Input
-                id="jobStartDate"
+                id="jobInspectionDate"
                 type={editMode ? "date" : "text"}
-                name="jobStartDate"
-                label="Start Date"
+                name="jobInspectionDate"
+                label="Inspection Date"
                 value={
                   editMode
-                    ? updatedProject.jobStartDate
-                    : new Date(jobOrder.jobStartDate).toLocaleDateString(
+                    ? updatedProject.jobInspectionDate
+                    : new Date(jobOrder.jobInspectionDate).toLocaleDateString(
                         "en-US",
                       )
                 }
@@ -314,274 +250,473 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                   editMode &&
                   setUpdatedProject({
                     ...updatedProject,
-                    jobStartDate: e.target.value,
-                  })
-                }
-                readOnly={!editMode || alertProjectDelayed(jobOrder)}
-                disabled={
-                  editMode &&
-                  (alertProjectDelayed(jobOrder) ||
-                    alertProjectExtended(jobOrder) ||
-                    alertProjectExtendedFinishToday(jobOrder))
-                }
-              />
-              {/* End Date */}
-              <Input
-                id="jobEndDate"
-                type={editMode ? "date" : "text"}
-                name="jobEndDate"
-                label="End Date"
-                value={
-                  editMode
-                    ? updatedProject.jobEndDate
-                    : new Date(jobOrder.jobEndDate).toLocaleDateString("en-US")
-                }
-                onChange={(e) =>
-                  editMode &&
-                  setUpdatedProject({
-                    ...updatedProject,
-                    jobEndDate: e.target.value,
+                    jobInspectionDate: e.target.value,
                   })
                 }
                 readOnly={!editMode}
-                disabled={
-                  editMode &&
-                  (alertProjectDelayed(jobOrder) ||
-                    alertProjectExtended(jobOrder) ||
-                    alertProjectExtendedFinishToday(jobOrder))
-                }
               />
-            </div>
+            </>
+          )}
 
-            {!editMode ? (
-              <div>
+          {jobOrder.jobStatus === "in progress" && (
+            <>
+              <div className="flex items-center text-sm font-semibold">
+                <span className="whitespace-nowrap pr-2 text-red-400">
+                  Project Schedule
+                </span>
+                <div className="my-2 h-[1px] w-full bg-secondary-200"></div>
+              </div>
+              {/* Extended Date - shows only if the project is delayed or extended */}
+              {(alertProjectExtended(jobOrder) ||
+                alertProjectDelayed(jobOrder) ||
+                alertProjectExtendedFinishToday(jobOrder)) && (
+                <>
+                  {alertProjectDelayed(jobOrder) && (
+                    <div className="rounded-lg border border-green-500 bg-green-50 p-1">
+                      <span className="flex items-center text-xs">
+                        <TbExclamationCircle className="mr-1 text-red-500" />
+                        Did you want to extend it?
+                      </span>
+                    </div>
+                  )}
+                  {alertProjectExtendedFinishToday(jobOrder) && (
+                    <div className="rounded-lg border border-green-500 bg-green-50 p-1">
+                      <span className="flex items-center text-xs">
+                        <TbExclamationCircle className="mr-1 text-red-500" />
+                        Did you want to extend it again?
+                      </span>
+                    </div>
+                  )}
+                  <Input
+                    id="jobExtendedDate"
+                    type={editMode ? "date" : "text"}
+                    name="jobExtendedDate"
+                    label="Extended Date"
+                    value={
+                      editMode
+                        ? updatedProject.jobExtendedDate
+                        : jobOrder.jobExtendedDate
+                          ? new Date(
+                              jobOrder.jobExtendedDate,
+                            ).toLocaleDateString("en-US")
+                          : ""
+                    }
+                    onChange={(e) =>
+                      editMode &&
+                      setUpdatedProject({
+                        ...updatedProject,
+                        jobExtendedDate: e.target.value,
+                      })
+                    }
+                    readOnly={!editMode}
+                  />
+                </>
+              )}
+
+              <div className="flex gap-2">
+                {/* Start Date */}
+                <Input
+                  id="jobStartDate"
+                  type={editMode ? "date" : "text"}
+                  name="jobStartDate"
+                  label="Start Date"
+                  value={
+                    editMode
+                      ? updatedProject.jobStartDate
+                      : new Date(jobOrder.jobStartDate).toLocaleDateString(
+                          "en-US",
+                        )
+                  }
+                  onChange={(e) =>
+                    editMode &&
+                    setUpdatedProject({
+                      ...updatedProject,
+                      jobStartDate: e.target.value,
+                    })
+                  }
+                  readOnly={!editMode || alertProjectDelayed(jobOrder)}
+                  disabled={
+                    editMode &&
+                    (alertProjectDelayed(jobOrder) ||
+                      alertProjectExtended(jobOrder) ||
+                      alertProjectExtendedFinishToday(jobOrder))
+                  }
+                />
+                {/* End Date */}
+                <Input
+                  id="jobEndDate"
+                  type={editMode ? "date" : "text"}
+                  name="jobEndDate"
+                  label="End Date"
+                  value={
+                    editMode
+                      ? updatedProject.jobEndDate
+                      : new Date(jobOrder.jobEndDate).toLocaleDateString(
+                          "en-US",
+                        )
+                  }
+                  onChange={(e) =>
+                    editMode &&
+                    setUpdatedProject({
+                      ...updatedProject,
+                      jobEndDate: e.target.value,
+                    })
+                  }
+                  readOnly={!editMode}
+                  disabled={
+                    editMode &&
+                    (alertProjectDelayed(jobOrder) ||
+                      alertProjectExtended(jobOrder) ||
+                      alertProjectExtendedFinishToday(jobOrder))
+                  }
+                />
+              </div>
+
+              {!editMode ? (
+                <div>
+                  <a
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    href={jobOrder.jobQuotation}
+                    className="rounded-md border border-gray-400 bg-gray-200 p-2 text-sm text-secondary-900 hover:bg-gray-300"
+                  >
+                    View Quotation
+                  </a>
+                </div>
+              ) : (
+                <Input
+                  id="jobQuotation"
+                  type="file"
+                  name="jobQuotation"
+                  label="Upload New Quotation"
+                  className="!py-2"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      setUpdatedProject({
+                        ...updatedProject,
+                        jobQuotation: file,
+                      });
+                    }
+                  }}
+                />
+              )}
+            </>
+          )}
+          {jobOrder.jobStatus === "cancelled" && (
+            <>
+              <div className="flex items-center text-sm font-semibold">
+                <span className="whitespace-nowrap pr-2 text-red-400">
+                  Cancellation Information
+                </span>
+                <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
+              </div>
+              <div className="flex flex-col gap-2">
+                {/* Cancellation Reason */}
+                <Textarea
+                  id="jobCancellationReason"
+                  name="jobCancellationReason"
+                  label="Cancellation Reason"
+                  value={jobOrder.jobCancellationReason}
+                  readOnly
+                />
+                <div className="flex gap-2">
+                  {/* Cancellation Date */}
+                  <Input
+                    id="jobCancellationDate"
+                    name="jobCancellationDate"
+                    label="Cancelled Date"
+                    value={new Date(
+                      jobOrder.jobCancelledDate,
+                    ).toLocaleDateString("en-US")}
+                    readOnly
+                  />
+                  {/* Previous Status */}
+                  <Input
+                    id="jobPreviousStatus"
+                    name="jobPreviousStatus"
+                    label="Cancelled On"
+                    className="capitalize"
+                    value={jobOrder.jobPreviousStatus}
+                    readOnly
+                  />
+                </div>
+              </div>
+            </>
+          )}
+          {jobOrder.jobStatus === "completed" && (
+            <>
+              <div className="flex items-center text-sm font-semibold">
+                <span className="whitespace-nowrap pr-2 text-green-500">
+                  Completed Information
+                </span>
+                <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
+              </div>
+              <Input
+                id="jobCompletionDate"
+                name="jobCompletionDate"
+                label="Completation Date"
+                value={new Date(jobOrder.jobCompletedDate).toLocaleDateString(
+                  "en-US",
+                )}
+              />
+              <div className="flex gap-2">
+                <Input
+                  label="Start Date"
+                  value={new Date(jobOrder.jobStartDate).toLocaleDateString(
+                    "en-US",
+                  )}
+                />
+                <Input
+                  label="End Date"
+                  value={new Date(jobOrder.jobEndDate).toLocaleDateString(
+                    "en-US",
+                  )}
+                />
+              </div>
+              <div className="flex gap-2">
+                {jobOrder.jobExtendedDate ? (
+                  <Input
+                    label="Extended Date"
+                    value={new Date(
+                      jobOrder.jobExtendedDate,
+                    ).toLocaleDateString("en-US")}
+                  />
+                ) : (
+                  ""
+                )}
                 <a
                   target="_blank"
                   rel="noopener noreferrer"
                   href={jobOrder.jobQuotation}
-                  className="border border-gray-400 bg-gray-200 p-2 text-sm text-secondary-900 hover:bg-gray-300"
+                  className="whitespace-nowrap rounded-md border border-gray-400 bg-gray-200 p-2 text-sm text-secondary-900 hover:bg-gray-300"
                 >
                   View Quotation
                 </a>
               </div>
-            ) : (
-              <Input
-                id="jobQuotation"
-                type="file"
-                name="jobQuotation"
-                label="Upload New Quotation"
-                className="!py-2"
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    setUpdatedProject({
-                      ...updatedProject,
-                      jobQuotation: file,
-                    });
-                  }
-                }}
-              />
-            )}
-          </>
-        )}
+            </>
+          )}
 
-        <div className="flex items-center text-sm font-semibold">
-          <span className="whitespace-nowrap pr-2 text-secondary-500">
-            Client Information
-          </span>
-          <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
-        </div>
-        <div className="flex gap-2">
+          <div className="flex items-center text-sm font-semibold">
+            <span className="whitespace-nowrap pr-2 text-secondary-500">
+              Client Information
+            </span>
+            <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              id="clientFirstName"
+              name="clientFirstName"
+              className="uppercase"
+              label="First name"
+              value={
+                editMode
+                  ? updatedProject.clientFirstName
+                  : jobOrder.clientFirstName
+              }
+              onChange={(e) =>
+                editMode &&
+                setUpdatedProject({
+                  ...updatedProject,
+                  clientFirstName: e.target.value,
+                })
+              }
+              readOnly={!editMode}
+            />
+            <Input
+              id="clientLastName"
+              name="clientLastName"
+              className="uppercase"
+              label="Last name"
+              value={
+                editMode
+                  ? updatedProject.clientLastName
+                  : jobOrder.clientLastName
+              }
+              onChange={(e) =>
+                editMode &&
+                setUpdatedProject({
+                  ...updatedProject,
+                  clientLastName: e.target.value,
+                })
+              }
+              readOnly={!editMode}
+            />
+          </div>
           <Input
-            id="clientFirstName"
-            name="clientFirstName"
-            label="First name"
+            id="clientAddress"
+            name="clientAddress"
+            className="capitalize"
+            label="Home address"
             value={
-              editMode
-                ? updatedProject.clientFirstName
-                : jobOrder.clientFirstName
+              editMode ? updatedProject.clientAddress : jobOrder.clientAddress
             }
             onChange={(e) =>
               editMode &&
               setUpdatedProject({
                 ...updatedProject,
-                clientFirstName: e.target.value,
+                clientAddress: e.target.value,
               })
             }
             readOnly={!editMode}
           />
+          <div className="flex gap-2">
+            <Input
+              id="clientEmail"
+              name="clientEmail"
+              className="lowercase"
+              label="Email"
+              value={
+                editMode ? updatedProject.clientEmail : jobOrder.clientEmail
+              }
+              onChange={(e) =>
+                editMode &&
+                setUpdatedProject({
+                  ...updatedProject,
+                  clientEmail: e.target.value,
+                })
+              }
+              readOnly={!editMode}
+            />
+            <Input
+              id="clientPhone"
+              name="clientPhone"
+              label="Phone number"
+              value={
+                editMode ? updatedProject.clientPhone : jobOrder.clientPhone
+              }
+              onChange={(e) =>
+                editMode &&
+                setUpdatedProject({
+                  ...updatedProject,
+                  clientPhone: e.target.value,
+                })
+              }
+              readOnly={!editMode}
+            />
+          </div>
+          <div className="flex items-center text-sm font-semibold">
+            <span className="whitespace-nowrap pr-2 text-secondary-500">
+              Job Order Information
+            </span>
+            <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
+          </div>
           <Input
-            id="clientLastName"
-            name="clientLastName"
-            label="Last name"
-            value={
-              editMode ? updatedProject.clientLastName : jobOrder.clientLastName
-            }
-            onChange={(e) =>
-              editMode &&
-              setUpdatedProject({
-                ...updatedProject,
-                clientLastName: e.target.value,
-              })
-            }
-            readOnly={!editMode}
-          />
-        </div>
-        <Input
-          id="clientAddress"
-          name="clientAddress"
-          label="Home address"
-          value={
-            editMode ? updatedProject.clientAddress : jobOrder.clientAddress
-          }
-          onChange={(e) =>
-            editMode &&
-            setUpdatedProject({
-              ...updatedProject,
-              clientAddress: e.target.value,
-            })
-          }
-          readOnly={!editMode}
-        />
-        <div className="flex gap-2">
-          <Input
-            id="clientEmail"
-            name="clientEmail"
-            label="Email"
-            value={editMode ? updatedProject.clientEmail : jobOrder.clientEmail}
-            onChange={(e) =>
-              editMode &&
-              setUpdatedProject({
-                ...updatedProject,
-                clientEmail: e.target.value,
-              })
-            }
-            readOnly={!editMode}
-          />
-          <Input
-            id="clientPhone"
-            name="clientPhone"
-            label="Phone number"
-            value={editMode ? updatedProject.clientPhone : jobOrder.clientPhone}
-            onChange={(e) =>
-              editMode &&
-              setUpdatedProject({
-                ...updatedProject,
-                clientPhone: e.target.value,
-              })
-            }
-            readOnly={!editMode}
-          />
-        </div>
-        <div className="flex items-center text-sm font-semibold">
-          <span className="whitespace-nowrap pr-2 text-secondary-500">
-            Job Order Information
-          </span>
-          <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
-        </div>
-        {!editMode ? (
-          <Input
-            id="jobType"
-            name="jobType"
-            label="Type of job"
-            value={jobOrder.jobType}
+            id="projectID"
+            name="projectID"
+            label="Project ID"
+            value={jobOrder.projectID}
             readOnly
+            disabled={editMode}
           />
-        ) : (
-          <Select
-            label="Select Type of Job"
-            value={updatedProject.jobType}
-            onChange={(value) =>
-              setUpdatedProject({
-                ...updatedProject,
-                jobType: value,
-              })
-            }
-          >
-            <Option value="Repairs">Repairs</Option>
-            <Option value="Renovation">Renovation</Option>
-            <Option value="Preventive Maintenance Services">
-              Preventive Maintenance Services
-            </Option>
-          </Select>
-        )}
+          {!editMode ? (
+            <Input
+              id="jobType"
+              name="jobType"
+              label="Type of job"
+              value={jobOrder.jobType}
+              readOnly
+            />
+          ) : (
+            <Select
+              label="Select Type of Job"
+              value={updatedProject.jobType}
+              onChange={(value) =>
+                setUpdatedProject({
+                  ...updatedProject,
+                  jobType: value,
+                })
+              }
+            >
+              <Option value="Repairs">Repairs</Option>
+              <Option value="Renovation">Renovation</Option>
+              <Option value="Preventive Maintenance Services">
+                Preventive Maintenance Services
+              </Option>
+            </Select>
+          )}
 
-        {!editMode ? (
-          <Input
-            id="jobServices"
-            name="jobServices"
-            label="Selected Services"
-            value={jobOrder.jobServices.join(", ")}
-            readOnly
-          />
-        ) : (
-          <>
-            <label className="text-sm">Select Services:</label>
-            <div className="max-h-[104px] overflow-y-auto rounded border">
-              <List className="flex-col">
-                {servicesList.map((service, index) => (
-                  <ListItem key={index} className="p-0">
-                    <label
-                      htmlFor={`service-checkbox-${index}`}
-                      className="flex w-full cursor-pointer items-center"
-                    >
-                      <Checkbox
-                        id={`service-checkbox-${index}`}
-                        checked={selectedOptions.includes(service)}
-                        onChange={() => handleToggleOption(service)}
-                      />
-                      <Typography variant="small">{service}</Typography>
-                    </label>
-                  </ListItem>
-                ))}
-              </List>
-            </div>
-          </>
-        )}
+          {!editMode ? (
+            <Input
+              id="jobServices"
+              name="jobServices"
+              label="Selected Services"
+              value={jobOrder.jobServices.join(", ")}
+              readOnly
+            />
+          ) : (
+            <>
+              <label className="text-sm">Select Services:</label>
+              <div className="max-h-[104px] overflow-y-auto rounded border">
+                <List className="flex-col">
+                  {servicesList.map((service, index) => (
+                    <ListItem key={index} className="p-0">
+                      <label
+                        htmlFor={`service-checkbox-${index}`}
+                        className="flex w-full cursor-pointer items-center"
+                      >
+                        <Checkbox
+                          id={`service-checkbox-${index}`}
+                          checked={selectedOptions.includes(service)}
+                          onChange={() => handleToggleOption(service)}
+                        />
+                        <Typography variant="small">{service}</Typography>
+                      </label>
+                    </ListItem>
+                  ))}
+                </List>
+              </div>
+            </>
+          )}
 
-        <div className="my-1 h-[1px] w-full bg-secondary-200 text-sm"></div>
-        <div className="flex flex-col">
-          <div className="flex justify-between">
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-secondary-900">
-                Created By:{" "}
-                <span className="capitalize">
-                  {jobOrder.createdBy?.firstName || (
-                    <>
-                      <span className="animate-pulse normal-case animate-duration-1000">
-                        Please wait...
-                      </span>
-                    </>
-                  )}{" "}
-                  {jobOrder.createdBy?.lastName}
+          <div className="my-1 h-[1px] w-full bg-secondary-200 text-sm"></div>
+          <div className="flex flex-col">
+            <div className="flex justify-between">
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-secondary-900">
+                  Created By:{" "}
+                  <span className="capitalize">
+                    {isLoading ? (
+                      <span className="animate-pulse">Please wait...</span>
+                    ) : jobOrder && jobOrder.createdBy ? (
+                      <>
+                        {jobOrder.createdBy.firstName}{" "}
+                        {jobOrder.createdBy.lastName}
+                      </>
+                    ) : (
+                      <span className="normal-case">Client</span>
+                    )}
+                  </span>
                 </span>
-              </span>
-              <span className="text-xs text-secondary-500">
-                {new Date(jobOrder.createdAt).toLocaleString()}
-              </span>
-            </div>
+                <span className="text-xs text-secondary-500">
+                  {jobOrder && jobOrder.createdAt
+                    ? new Date(jobOrder.createdAt).toLocaleString()
+                    : "Loading..."}
+                </span>
+              </div>
 
-            {jobOrder.updatedAt !== jobOrder.createdAt &&
-              jobOrder.updatedBy && (
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-secondary-900">
-                    Updated By:{" "}
-                    <span className="capitalize">
-                      {jobOrder.updatedBy?.firstName || (
-                        <>
-                          <span className="animate-pulse normal-case animate-duration-1000">
-                            Please wait...
-                          </span>
-                        </>
-                      )}{" "}
-                      {jobOrder.updatedBy?.lastName}
+              {jobOrder.updatedAt !== jobOrder.createdAt &&
+                jobOrder.updatedBy && (
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-secondary-900">
+                      Updated By:{" "}
+                      <span className="capitalize">
+                        {jobOrder.updatedBy?.firstName || (
+                          <>
+                            <span className="animate-pulse normal-case animate-duration-1000">
+                              Please wait...
+                            </span>
+                          </>
+                        )}{" "}
+                        {jobOrder.updatedBy?.lastName}
+                      </span>
                     </span>
-                  </span>
-                  <span className="text-xs text-secondary-500">
-                    {new Date(jobOrder.updatedAt).toLocaleString()}
-                  </span>
-                </div>
-              )}
+                    <span className="text-xs text-secondary-500">
+                      {new Date(jobOrder.updatedAt).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+            </div>
           </div>
         </div>
       </div>

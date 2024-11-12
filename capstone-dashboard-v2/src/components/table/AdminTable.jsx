@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Title } from "../props/Title";
 import axios from "axios";
 import dayjs from "dayjs";
-import { Chip, Typography } from "@material-tailwind/react";
 
 const AdminTable = () => {
   const [admins, setAdmins] = useState([]);
@@ -39,7 +38,6 @@ const AdminTable = () => {
               <th className="w-10">No</th>
               <th className="min-w-[150px]">First Name</th>
               <th className="min-w-[150px]">Last Name</th>
-              <th className="min-w-[130px]">Status</th>
               <th className="min-w-[230px]">Log In</th>
               <th className="min-w-[230px]">Log Out</th>
               <th className="w-full">Joined Date</th>
@@ -61,47 +59,13 @@ const AdminTable = () => {
               </tr>
             ) : admins && admins.length > 0 ? (
               admins.map((admin, index) => (
-                <tr key={admin._id} className="hover:bg-secondary-50">
+                <tr
+                  key={admin._id}
+                  className="text-sm uppercase hover:bg-secondary-50"
+                >
                   <td>{index + 1}</td>
                   <td>{admin.firstName}</td>
                   <td>{admin.lastName}</td>
-                  <td>
-                    {admin.loginDate > admin.logoutDate ? (
-                      <>
-                        <div className="flex font-semibold">
-                          <Chip
-                            variant="ghost"
-                            color="green"
-                            value={
-                              <Typography
-                                variant="small"
-                                className="font-bold capitalize leading-none"
-                              >
-                                Online
-                              </Typography>
-                            }
-                          />
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex font-semibold">
-                          <Chip
-                            variant="ghost"
-                            color="gray"
-                            value={
-                              <Typography
-                                variant="small"
-                                className="font-bold capitalize leading-none"
-                              >
-                                Offline
-                              </Typography>
-                            }
-                          />
-                        </div>
-                      </>
-                    )}
-                  </td>
                   <td>
                     {admin.loginDate
                       ? dayjs(admin.loginDate).format("MMM D - h:mm:s A")

@@ -16,7 +16,6 @@ export const signup = async (req, res) => {
         if (existingUser.isEmailVerified) {
           return res.status(400).json({ message: 'Email already exists and is verified. Cannot sign up again.' });
         }
-        console.log('User exists but not verified. Proceeding to resend OTP.');
       }
   
       const salt = await bcrypt.genSalt(10);

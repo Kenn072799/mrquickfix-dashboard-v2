@@ -31,12 +31,9 @@ const ResetPassword = () => {
           title: "Success",
           text: message,
         });
-        setTimeout(() => {
-          navigate("/login-admin", { replace: true });
-        }, 3000);
+        navigate("/login-admin", { replace: true });
       }
-    } catch (err) {
-    }
+    } catch (err) {}
   };
 
   useEffect(() => {

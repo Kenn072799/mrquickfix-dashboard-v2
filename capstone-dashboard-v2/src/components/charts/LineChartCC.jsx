@@ -1,6 +1,5 @@
 import React, { useState, useRef } from "react";
-import { Chart as ChartJS } from "chart.js/auto";
-import { Bar } from "react-chartjs-2";
+import { Line } from "react-chartjs-2";
 import {
   TbChevronLeft,
   TbChevronRight,
@@ -9,24 +8,14 @@ import {
   TbFileTypePng,
 } from "react-icons/tb";
 
-const BarChartTopServices = ({ projects = [] }) => {
-  const services = [
-    "Fits-outs",
-    "Electrical Works",
-    "Kitchen and Bath Renovation",
-    "Aircon Services",
-    "Door and Window Repairs",
-    "Outdoor and Landscaping",
-    "Household Cleaning Services",
-  ];
-
-  const abbreviatedServices = ["F-O", "EW", "KBR", "AS", "DWR", "OL", "HCS"];
-
+const LineChartCC = ({ projects = [] }) => {
   const [year, setYear] = useState(new Date().getFullYear());
   const [openDownload, setOpenDownload] = useState(false);
   const chartRef = useRef(null);
 
-  const serviceCount = Array(services.length).fill(0);
+  const monthlyCompletedInquiries = Array(12).fill(0);
+  const monthlyOnProcessInquiries = Array(12).fill(0);
+  const monthlyInProgressInquiries = Array(12).fill(0);
 
   projects
     .filter(
@@ -34,26 +23,24 @@ const BarChartTopServices = ({ projects = [] }) => {
         project.createdAt && new Date(project.createdAt).getFullYear() === year,
     )
     .forEach((project) => {
+      const date = new Date(project.createdAt);
+      const month = date.getMonth();
+
       if (
-        project.jobStatus !== "cancelled" &&
-        project.jobServices &&
-        Array.isArray(project.jobServices)
+        project.jobStatus === "completed" ||
+        project.originalStatus === "completed"
       ) {
-        project.jobServices.forEach((service) => {
-          const serviceIndex = services.indexOf(service);
-          if (serviceIndex !== -1) {
-            serviceCount[serviceIndex] += 1;
-          }
-        });
+        monthlyCompletedInquiries[month] += 1;
+      }
+
+      if (project.jobPreviousStatus === "on process") {
+        monthlyOnProcessInquiries[month] += 1;
+      }
+
+      if (project.jobPreviousStatus === "in progress") {
+        monthlyInProgressInquiries[month] += 1;
       }
     });
-
-  const hasDataForYear = serviceCount.some((count) => count > 0);
-
-  const topServiceIndex = hasDataForYear
-    ? serviceCount.indexOf(Math.max(...serviceCount))
-    : -1;
-  const topService = topServiceIndex !== -1 ? services[topServiceIndex] : "N/A";
 
   const handleDownload = () => {
     setOpenDownload(!openDownload);
@@ -65,29 +52,47 @@ const BarChartTopServices = ({ projects = [] }) => {
       const imageUrl = chartCanvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = imageUrl;
-      link.download = `top-services-chart-${year}.png`;
+      link.download = `completed-and-cancelled-project-${year}.png`;
       link.click();
     }
   };
 
   const downloadCSV = () => {
     const data = [
-      ["Service", "Count"],
-      ...services.map((service, index) => [service, serviceCount[index]]),
+      ["Month", "Completed", "On Process Cancel", "In Progress Cancel"],
+      ...monthlyCompletedInquiries.map((_, i) => [
+        [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ][i],
+        monthlyCompletedInquiries[i],
+        monthlyOnProcessInquiries[i],
+        monthlyInProgressInquiries[i],
+      ]),
     ];
 
     const csv = data.map((row) => row.join(",")).join("\n");
+
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `top-services-data-${year}.csv`;
+    link.download = `completed-and-cancelled-project-${year}.csv`;
     link.click();
   };
 
   return (
     <div className="h-full w-full">
       <div className="flex items-center justify-between">
-        {/* Year Navigation */}
         <div className="flex items-center">
           <button onClick={() => setYear((prev) => prev - 1)} className="p-2">
             <div className="rounded-lg border p-1 active:bg-secondary-50">
@@ -111,7 +116,6 @@ const BarChartTopServices = ({ projects = [] }) => {
           </button>
         </div>
 
-        {/* Download Options */}
         <div className="relative">
           <button className="p-2" onClick={handleDownload}>
             <div className="rounded-lg border p-1 active:bg-secondary-50">
@@ -141,52 +145,57 @@ const BarChartTopServices = ({ projects = [] }) => {
         </div>
       </div>
 
-      {/* Bar Chart */}
-      <Bar
+      <Line
         ref={chartRef}
         data={{
-          labels: services,
+          labels: [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ],
           datasets: [
             {
-              label: "Service Count",
-              data: serviceCount,
-              backgroundColor: [
-                "rgba(255, 99, 132, 0.6)",
-                "rgba(54, 162, 235, 0.6)",
-                "rgba(255, 206, 86, 0.6)",
-                "rgba(75, 192, 192, 0.6)",
-                "rgba(153, 102, 255, 0.6)",
-                "rgba(255, 159, 64, 0.6)",
-                "rgba(99, 255, 132, 0.6)",
-              ],
-              borderRadius: 5,
+              label: "Completed",
+              data: monthlyCompletedInquiries,
+              tension: 0.5,
+              borderColor: "#4caf50",
+            },
+            {
+              label: "On Process Cancel",
+              data: monthlyOnProcessInquiries,
+              tension: 0.5,
+              borderColor: "#2196f3",
+            },
+            {
+              label: "In Progress Cancel",
+              data: monthlyInProgressInquiries,
+              tension: 0.5,
+              borderColor: "#FF8C00",
             },
           ],
         }}
         options={{
           plugins: {
-            title: {
-              display: true,
-              text: `Top Job Services in ${year} - (${topService})`,
-            },
             legend: {
-              display: false,
+              display: true,
             },
           },
           scales: {
             x: {
-              labels: abbreviatedServices,
               display: true,
-              title: {
-                display: false,
-              },
             },
             y: {
               display: true,
               beginAtZero: true,
-              title: {
-                display: false,
-              },
             },
           },
         }}
@@ -195,4 +204,4 @@ const BarChartTopServices = ({ projects = [] }) => {
   );
 };
 
-export default BarChartTopServices;
+export default LineChartCC;

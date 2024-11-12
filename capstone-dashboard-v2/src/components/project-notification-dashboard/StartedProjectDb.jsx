@@ -1,16 +1,40 @@
-import React from "react";
-import { TbCalendarUp } from "react-icons/tb";
+import React, { useEffect, useState } from "react";
+import { TbCalendarEvent } from "react-icons/tb";
+import { useJobAlertProgress } from "../../data/useJobAlertProgress";
 
-const startedProject = 1;
+const StartedProjectDb = ({ projects = [] }) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-const StartedProjectDb = () => {
+  const { alertProjectStartToday } = useJobAlertProgress(today);
+
+  const [startedTodayInProgress, setStartedTodayInProgress] = useState(0);
+
+  useEffect(() => {
+    const startedProjectsInProgress = projects.filter((project) => {
+      const startDate = new Date(project.jobStartDate);
+      startDate.setHours(0, 0, 0, 0);
+
+      return (
+        project.jobStatus === "in progress" && alertProjectStartToday(project)
+      );
+    });
+
+    setStartedTodayInProgress(startedProjectsInProgress.length);
+  }, [projects, alertProjectStartToday]);
+
   return (
-    <div className="round rounded-sm border border-blue-600 bg-blue-200 text-blue-600">
+    <div
+      className={`round w-full rounded-sm ${startedTodayInProgress === 0 ? "border border-secondary-200 text-secondary-300" : "bg-secondary-200 font-bold text-secondary-950"} `}
+    >
       <div className="flex h-full items-center px-3 py-1">
-        <TbCalendarUp className="mr-3 text-[26px]" />
+        <TbCalendarEvent className="mr-3 text-[20px]" />
         <span>
-          {startedProject} project{startedProject !== 1 ? "s" : ""} scheduled
-          for today.
+          {startedTodayInProgress === 0
+            ? "No projects started today."
+            : `${startedTodayInProgress} project${
+                startedTodayInProgress !== 1 ? "s" : ""
+              } started today.`}
         </span>
       </div>
     </div>
