@@ -5,22 +5,20 @@ import ProjectIDCounter from "../models/projectIDCounter.model.js";
 // Add job order
 export const addJobOrder = async (req, res) => {
     const job = req.body;
-
+  
     try {
-        if (job.jobStatus !== "inquiry") {
-            let counter = await ProjectIDCounter.findOne();
-
-            if (!counter) {
-                counter = new ProjectIDCounter({ lastProjectID: 0 });
-                await counter.save();
-            }
-
-            const newProjectID = `P${String(counter.lastProjectID + 1).padStart(7, '0')}`;
-
-            await ProjectIDCounter.updateOne({}, { $inc: { lastProjectID: 1 } });
-
-            job.projectID = newProjectID;
+        let counter = await ProjectIDCounter.findOne();
+  
+        if (!counter) {
+            counter = new ProjectIDCounter({ lastProjectID: 0 });
+            await counter.save();
         }
+  
+        const newProjectID = `P${String(counter.lastProjectID + 1).padStart(7, '0')}`;
+  
+        await ProjectIDCounter.updateOne({}, { $inc: { lastProjectID: 1 } });
+  
+        job.projectID = newProjectID;
 
         if (job.createdBy && job.createdBy === "Client") {
             job.createdBy = null;
@@ -30,14 +28,13 @@ export const addJobOrder = async (req, res) => {
 
         const newJob = new JobOrder(job);
         await newJob.save();
-
+  
         res.status(201).json({ success: true, data: newJob });
     } catch (error) {
         console.error("Error saving job order:", error.message);
         res.status(500).json({ success: false, message: "Server Error: Failed to save job order" });
     }
 };
-
 
 // Get all job orders
 export const getJobOrders = async (req, res) => {
@@ -81,7 +78,7 @@ export const updateJobOrder = async (req, res) => {
         }
 
         if (updateFields.updatedBy === "Client") {
-            updateFields.updatedBy = null; 
+            updateFields.updatedBy = null;
         } else if (updateFields.updatedBy && !mongoose.Types.ObjectId.isValid(updateFields.updatedBy)) {
             return res.status(400).json({ success: false, message: "Invalid updatedBy ID" });
         }
