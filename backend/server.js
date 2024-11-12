@@ -13,8 +13,16 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 
+const allowedOrigins = [process.env.FRONTEND_URL, process.env.FRONTEND_WEBSITE].filter(Boolean);
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL && process.env.FRONTEND_WEBSITE,
+  origin: function (origin, callback) {
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Origin not allowed by CORS'));
+    }
+  },
   credentials: true 
 };
 
