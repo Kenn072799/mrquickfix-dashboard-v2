@@ -7,6 +7,7 @@ import ViewOnProcess from "../components/form/ViewOnProcess";
 
 // icons
 import { TbPlus } from "react-icons/tb";
+import InquiryTable from "../components/table/InquiryTable";
 
 const TrackJobOrder = () => {
   const [toggleAddJobOrderForm, setToggleAddJobOrderForm] = useState(false);
@@ -57,6 +58,12 @@ const TrackJobOrder = () => {
       {/* Main Table */}
       <div className="shadow-md shadow-secondary-100">
         <MainTable setSelectedJobOrder={selectJobOrder} />
+      </div>
+
+      <div className=""></div>
+
+      <div className="shadow-md mt-8 shadow-secondary-100">
+        <InquiryTable />
       </div>
 
       {/* Add Job Order Form */}

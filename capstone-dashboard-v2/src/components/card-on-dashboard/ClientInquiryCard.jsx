@@ -5,7 +5,7 @@ import { TbHomeEdit } from "react-icons/tb";
 const ClientInquiryCard = ({ projects = [] }) => {
   const clientProjects = projects.filter(
     (project) =>
-      project.jobStatus == "inquiry" || project.originalStatus == "inquiry",
+      project.inquiryStatus == "pending" || project.inquiryStatus == "received",
   );
   return (
     <div className="relative h-[120px] w-full min-w-[250px] cursor-pointer rounded-sm border-l-4 border-secondary-500 bg-white shadow-md shadow-secondary-100 ring-secondary-500 hover:ring-1 lg:min-w-[200px]">

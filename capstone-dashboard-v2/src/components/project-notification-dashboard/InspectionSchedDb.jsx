@@ -12,7 +12,7 @@ const InspectionSchedDb = ({ projects = [] }) => {
   useEffect(() => {
     const inspectionTodayProjects = projects.filter((project) => {
       return (
-        project.jobStatus === "on process" && alertInspectionToday(project)
+        project.jobStatus === "on process" && alertInspectionToday(project) && project.jobNotificationAlert !== "ready for quotation"
       );
     });
 
@@ -32,9 +32,9 @@ const InspectionSchedDb = ({ projects = [] }) => {
         <span>
           {inspectionTodayCount === 0
             ? "No inspections scheduled for today."
-            : `${inspectionTodayCount}${
+            : `${inspectionTodayCount} inspection${
                 inspectionTodayCount !== 1 ? "s" : ""
-              } inspection scheduled for today.`}
+              } scheduled for today.`}
         </span>
       </div>
     </div>

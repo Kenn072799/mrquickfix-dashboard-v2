@@ -9,9 +9,9 @@ export const Button = ({
 }) => {
   const variantStyle = {
     primary:
-      "bg-primary-500 text-white rounded-sm w-full flex items-center justify-center hover:bg-primary-600 active:bg-primary-700",
+      "bg-primary-500 select-none text-white rounded-sm w-full flex items-center justify-center hover:bg-primary-600 active:bg-primary-700",
     secondary:
-      "bg-primary-500 text-white rounded-sm hover:bg-primary-600 active:bg-primary-700",
+      "bg-primary-500 select-none text-white rounded-sm hover:bg-primary-600 active:bg-primary-700",
   };
 
   const sizeStyle = {

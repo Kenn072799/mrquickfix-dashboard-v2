@@ -322,7 +322,9 @@ const MainTable = ({ setSelectedJobOrder }) => {
 
   const filteredData = projects.filter((jobOrder) => {
     const isNotArchived =
-      jobOrder.jobStatus !== "archived" && jobOrder.jobStatus !== "inquiry";
+      jobOrder.jobStatus !== "archived" &&
+      jobOrder.inquiryStatus !== "pending" &&
+      jobOrder.inquiryStatus !== "received";
     const matchesStatus =
       statusFilter === "All" || jobOrder.jobStatus === statusFilter;
     const matchesSearchTerm =
@@ -597,7 +599,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
               Search:
             </Title>
             <input
-              className="mx-2 rounded-full border-secondary-200 bg-secondary-50 px-3 py-1 text-base outline-none ring-secondary-600 focus:ring-2"
+              className="mx-2 rounded-full border-secondary-200 bg-secondary-50 px-3 py-1 text-sm outline-none ring-secondary-600 focus:ring-2"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="name or pid"
@@ -653,8 +655,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
               <tr className="border-b-2 border-secondary-200 text-base text-primary-500">
                 <th className="w-10">No</th>
                 <th className="min-w-[100px]">Project ID</th>
-                <th className="min-w-[150px]">First Name</th>
-                <th className="min-w-[150px]">Last Name</th>
+                <th className="min-w-[150px]">Name</th>
                 <th className="min-w-[200px]">Job Type</th>
                 <th className="min-w-[130px]">Status</th>
                 <th className="w-full">Alert</th>
@@ -678,8 +679,9 @@ const MainTable = ({ setSelectedJobOrder }) => {
                   >
                     <td>{index + 1}</td>
                     <td>{jobOrder.projectID}</td>
-                    <td>{jobOrder.clientFirstName}</td>
-                    <td>{jobOrder.clientLastName}</td>
+                    <td>
+                      {jobOrder.clientFirstName} {jobOrder.clientLastName}
+                    </td>
                     <td>{jobOrder.jobType || "Not Specified Yet"}</td>
                     <td>
                       <div className="flex font-semibold">
@@ -905,7 +907,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
             ) : (
               <tbody>
                 <tr>
-                  <td colSpan="8" className="text-center capitalize">
+                  <td colSpan="7" className="text-center capitalize">
                     <img
                       src={Relax}
                       alt="Relax"

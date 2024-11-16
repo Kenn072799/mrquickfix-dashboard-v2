@@ -23,15 +23,20 @@ import Swal from "sweetalert2";
 import { useAdminData } from "../../data/AdminData";
 import { useJobAlertProgress } from "../../data/useJobAlertProgress";
 
-const servicesList = [
-  "Fits-outs",
-  "Electrical Works",
-  "Kitchen and Bath Renovation",
-  "Aircon Services",
-  "Door and Window Repairs",
-  "Outdoor and Landscaping",
-  "Household Cleaning Services",
-];
+const servicesList = {
+  Repairs: [
+    "Fits-outs (Painting, Carpentry, Masonry)",
+    "Door and Window Repairs",
+    "Electrical Works",
+  ],
+  Renovation: [
+    "Fits-outs (Painting, Carpentry, Masonry)",
+    "Kitchen and Bath Renovation",
+    "Outdoor and Landscaping",
+  ],
+  "Preventive Maintenance Service (PMS)": ["Aircon Services"],
+  "Cleaning Services": ["Household Cleaning Services"],
+};
 
 const ViewOnProcess = ({ jobOrder, onClose }) => {
   const [selectedOptions, setSelectedOptions] = useState([]);
@@ -102,6 +107,7 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
     setEditMode(!editMode);
     if (!editMode) {
       setUpdatedProject(jobOrder);
+      setSelectedOptions(jobOrder.jobServices || []);
     }
   };
 
@@ -150,7 +156,16 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
   const handleCancelEdit = () => {
     setEditMode(false);
     setUpdatedProject(jobOrder);
+    setSelectedOptions(jobOrder.jobServices || []);
     setHasUnsavedChanges(false);
+  };
+
+  const handleJobTypeChange = (value) => {
+    setSelectedOptions([]);
+    setUpdatedProject({
+      ...updatedProject,
+      jobType: value,
+    });
   };
 
   return (
@@ -222,7 +237,6 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                 readOnly
                 value={jobOrder.clientMessage}
               />
-              
             </>
           )}
 
@@ -239,6 +253,12 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                 type={editMode ? "date" : "text"}
                 name="jobInspectionDate"
                 label="Inspection Date"
+                disabled={
+                  editMode
+                    ? updatedProject.jobNotificationAlert ===
+                      "ready for quotation"
+                    : false
+                }
                 value={
                   editMode
                     ? updatedProject.jobInspectionDate
@@ -621,18 +641,13 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
             <Select
               label="Select Type of Job"
               value={updatedProject.jobType}
-              onChange={(value) =>
-                setUpdatedProject({
-                  ...updatedProject,
-                  jobType: value,
-                })
-              }
+              onChange={handleJobTypeChange}
             >
-              <Option value="Repairs">Repairs</Option>
-              <Option value="Renovation">Renovation</Option>
-              <Option value="Preventive Maintenance Services">
-                Preventive Maintenance Services
-              </Option>
+              {Object.keys(servicesList).map((jobType) => (
+                <Option key={jobType} value={jobType}>
+                  {jobType}
+                </Option>
+              ))}
             </Select>
           )}
 
@@ -649,21 +664,30 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
               <label className="text-sm">Select Services:</label>
               <div className="max-h-[104px] overflow-y-auto rounded border">
                 <List className="flex-col">
-                  {servicesList.map((service, index) => (
-                    <ListItem key={index} className="p-0">
-                      <label
-                        htmlFor={`service-checkbox-${index}`}
-                        className="flex w-full cursor-pointer items-center"
-                      >
-                        <Checkbox
-                          id={`service-checkbox-${index}`}
-                          checked={selectedOptions.includes(service)}
-                          onChange={() => handleToggleOption(service)}
-                        />
-                        <Typography variant="small">{service}</Typography>
-                      </label>
-                    </ListItem>
-                  ))}
+                  {servicesList[updatedProject.jobType] &&
+                  servicesList[updatedProject.jobType].length > 0 ? (
+                    servicesList[updatedProject.jobType].map(
+                      (service, index) => (
+                        <ListItem key={index} className="p-0">
+                          <label
+                            htmlFor={`service-checkbox-${index}`}
+                            className="flex w-full cursor-pointer items-center"
+                          >
+                            <Checkbox
+                              id={`service-checkbox-${index}`}
+                              checked={selectedOptions.includes(service)}
+                              onChange={() => handleToggleOption(service)}
+                            />
+                            <Typography variant="small">{service}</Typography>
+                          </label>
+                        </ListItem>
+                      ),
+                    )
+                  ) : (
+                    <Typography variant="small" className="p-2 text-gray-500">
+                      Please select a job type first.
+                    </Typography>
+                  )}
                 </List>
               </div>
             </>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Button,
   Checkbox,
@@ -14,21 +14,27 @@ import { TbX } from "react-icons/tb";
 import { useJobOrderData } from "../../data/JobOrderData";
 import Swal from "sweetalert2";
 
-const servicesList = [
-  "Fits-outs",
-  "Electrical Works",
-  "Kitchen and Bath Renovation",
-  "Aircon Services",
-  "Door and Window Repairs",
-  "Outdoor and Landscaping",
-  "Household Cleaning Services",
-];
+const servicesList = {
+  Repairs: [
+    "Fits-outs (Painting, Carpentry, Masonry)",
+    "Door and Window Repairs",
+    "Electrical Works",
+  ],
+  Renovation: [
+    "Fits-outs (Painting, Carpentry, Masonry)",
+    "Kitchen and Bath Renovation",
+    "Outdoor and Landscaping",
+  ],
+  "Preventive Maintenance Service (PMS)": ["Aircon Services"],
+  "Cleaning Services": ["Household Cleaning Services"],
+};
 
 const AddJobOrderForm = ({ onClose, adminId }) => {
   const [selectedOptions, setSelectedOptions] = useState([]);
   const [quotationUploaded, setQuotationUploaded] = useState(false);
   const [inspectionDate, setInspectionDate] = useState("");
   const [loading, setLoading] = useState(false);
+  const [filteredServices, setFilteredServices] = useState([]);
 
   const [newJobOrder, setNewJobOrder] = useState({
     projectID: "",
@@ -122,6 +128,14 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
     }
   };
 
+  useEffect(() => {
+    const relevantServices = servicesList[newJobOrder.jobType] || [];
+    setFilteredServices(relevantServices);
+    setSelectedOptions((prevOptions) =>
+      prevOptions.filter((service) => relevantServices.includes(service)),
+    );
+  }, [newJobOrder.jobType]);
+
   return (
     <div className="max-w-[500px] rounded-lg">
       <div className="flex cursor-pointer items-center justify-between rounded-t-md border border-b-0 border-secondary-300 bg-secondary-100 px-4 py-2">
@@ -135,7 +149,7 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
           </button>
         </div>
       </div>
-      <div className="max-h-[90vh] w-full overflow-auto p-4 rounded-b-md border border-secondary-300 bg-white">
+      <div className="max-h-[90vh] w-full overflow-auto rounded-b-md border border-secondary-300 bg-white p-4">
         <div className="flex flex-col gap-4">
           {/* Name */}
           <div className="flex gap-2">
@@ -193,31 +207,37 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
               setNewJobOrder({ ...newJobOrder, jobType: value })
             }
           >
-            <Option value="Repairs">Repairs</Option>
-            <Option value="Renovation">Renovation</Option>
-            <Option value="Preventive Maintenance Services">
-              Preventive Maintenance Services
-            </Option>
+            {Object.keys(servicesList).map((jobType) => (
+              <Option key={jobType} value={jobType}>
+                {jobType}
+              </Option>
+            ))}
           </Select>
           {/* Select Services */}
           <label className="text-sm">Select Services:</label>
           <div className="max-h-[104px] overflow-y-auto rounded border">
             <List className="flex-col">
-              {servicesList.map((service, index) => (
-                <ListItem key={index} className="p-0">
-                  <label
-                    htmlFor={`service-checkbox-${index}`}
-                    className="flex w-full cursor-pointer items-center"
-                  >
-                    <Checkbox
-                      id={`service-checkbox-${index}`}
-                      checked={selectedOptions.includes(service)}
-                      onChange={() => handleToggleOption(service)}
-                    />
-                    <Typography variant="small">{service}</Typography>
-                  </label>
-                </ListItem>
-              ))}
+              {filteredServices.length > 0 ? (
+                filteredServices.map((service, index) => (
+                  <ListItem key={index} className="p-0">
+                    <label
+                      htmlFor={`service-checkbox-${index}`}
+                      className="flex w-full cursor-pointer items-center"
+                    >
+                      <Checkbox
+                        id={`service-checkbox-${index}`}
+                        checked={selectedOptions.includes(service)}
+                        onChange={() => handleToggleOption(service)}
+                      />
+                      <Typography variant="small">{service}</Typography>
+                    </label>
+                  </ListItem>
+                ))
+              ) : (
+                <Typography variant="small" className="p-2 text-gray-500">
+                  Please select a job type first.
+                </Typography>
+              )}
             </List>
           </div>
           <div className="flex items-center text-sm font-semibold">

@@ -3,9 +3,9 @@ import dotenv from "dotenv";
 import cors from 'cors';
 import cookieParser from "cookie-parser";
 import { connectDB } from "./config/db.js";
-
 import authRoutes from "./router/auth.router.js";
 import jobOrderRoutes from "./router/joborder.route.js";
+
 
 dotenv.config();
 

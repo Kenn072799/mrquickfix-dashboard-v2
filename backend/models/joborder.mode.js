@@ -93,6 +93,11 @@ const joborderSchema = new mongoose.Schema({
         type: String,
         required: false
     },
+    // Inquiry Status
+    inquiryStatus: {
+        type: String,
+        required: false
+    },
     // Archiving Fields
     isArchived: {
         type: Boolean,

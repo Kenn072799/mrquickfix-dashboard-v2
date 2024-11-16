@@ -13,7 +13,7 @@ const InspectionTomorrow = ({ projects = [] }) => {
   useEffect(() => {
     const inspectionTomorrowProjects = projects.filter(
       (project) =>
-        project.jobStatus === "on process" && alertInspectionTomorrow(project),
+        project.jobStatus === "on process" && alertInspectionTomorrow(project) && project.jobNotificationAlert !== "ready for quotation",
     );
 
     setInspectionTomorrowCount(inspectionTomorrowProjects.length);

@@ -1,14 +1,10 @@
 import React, { useEffect, useState } from "react";
 import useCurrentTime from "../hooks/useCurrentTime";
-import { Button } from "../props/button";
 import { Link, useNavigate } from "react-router-dom";
 import { IoNotificationsSharp } from "react-icons/io5";
-
+import DefaultImage from "../../assets/default.jpg";
 import { useAdminData } from "../../data/AdminData";
 import { useJobOrderData } from "../../data/JobOrderData";
-
-// PNG
-import Man from "../../assets/profile.png";
 import { MdKeyboardArrowDown, MdOutlineLogout } from "react-icons/md";
 import { RiAccountCircleLine } from "react-icons/ri";
 
@@ -19,7 +15,7 @@ const NavBar = () => {
   const navigate = useNavigate();
 
   const { getLoggedInAdmin, admin, logoutAdmin } = useAdminData();
-  const { fetchProjects, projects, updateJobOrder } = useJobOrderData();
+  const { fetchProjects, projects, updateNotificationRead } = useJobOrderData();
 
   const [readNotifications, setReadNotifications] = useState(new Set());
   const [updateTime, setUpdateTime] = useState(Date.now());
@@ -51,10 +47,31 @@ const NavBar = () => {
     return () => clearInterval(interval);
   }, [fetchProjects]);
 
+  useEffect(() => {
+    if (projects.length === 0) return;
+
+    const newReadNotifications = new Set(
+      projects
+        .filter(
+          (project) =>
+            project.jobNotificationRead === true &&
+            !readNotifications.has(project._id),
+        )
+        .map((project) => project._id),
+    );
+
+    if (newReadNotifications.size > 0) {
+      setReadNotifications(
+        (prev) => new Set([...prev, ...newReadNotifications]),
+      );
+    }
+  }, [projects]);
+
   const unreadNotifications = projects
     .filter(
       (project) =>
-        project.jobStatus === "inquiry" && !readNotifications.has(project._id),
+        project.inquiryStatus === "pending" &&
+        !readNotifications.has(project._id),
     )
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
@@ -67,22 +84,29 @@ const NavBar = () => {
     setNotificationLimit(unreadNotifications.length);
   };
 
+  const handleNotificationClick = async (projectId) => {
+    try {
+      const updateResult = await updateNotificationRead(projectId);
+      if (!updateResult.success) {
+        console.error("Error updating notification:", updateResult.message);
+        return;
+      }
+
+      fetchProjects();
+    } catch (error) {
+      console.error("Error updating notification:", error);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-40 flex h-16 w-full items-center justify-end gap-4 border-b bg-white px-4">
       {/* Notification */}
       <div className="relative cursor-pointer select-none rounded-full bg-secondary-100 p-2 active:bg-secondary-200">
-        {unreadNotifications.filter(
-          (project) => project.jobNotificationRead === false,
-        ).length > 0 ? (
+        {/* Count only unread notifications */}
+        {unreadNotifications.length > 0 && (
           <span className="absolute -right-2 -top-1 rounded-full bg-red-500 px-2 text-sm text-white">
-            {
-              unreadNotifications.filter(
-                (project) => project.jobNotificationRead === false,
-              ).length
-            }
+            {unreadNotifications.length}
           </span>
-        ) : (
-          ""
         )}
         <IoNotificationsSharp
           className="text-[26px] text-secondary-900"
@@ -101,9 +125,9 @@ const NavBar = () => {
               {displayedNotifications.length > 0 ? (
                 displayedNotifications.map((project) => {
                   const truncatedMessage =
-                    project.clientMessage?.length > 20
-                      ? project.clientMessage.slice(0, 20) + "..."
-                      : project.clientMessage;
+                    project.clientMessage?.length > 10
+                      ? project.clientMessage.slice(0, 10) + "..."
+                      : project.clientMessage || "N/A";
 
                   return (
                     <div
@@ -113,11 +137,7 @@ const NavBar = () => {
                           ? "font-normal"
                           : "font-semibold"
                       }`}
-                      onClick={() =>
-                        updateJobOrder(project._id, {
-                          jobNotificationRead: true,
-                        })
-                      }
+                      onClick={() => handleNotificationClick(project._id)}
                     >
                       {project.jobNotificationRead === false && (
                         <span className="absolute right-2 top-2 rounded-full bg-red-500 px-2 text-xs text-white">
@@ -126,11 +146,13 @@ const NavBar = () => {
                       )}
                       <Link to="/track-job-orders">
                         <div className="flex flex-col">
-                          <span className="flex gap-1">
+                          <span className="flex gap-1 overflow-hidden whitespace-nowrap lowercase">
                             <p>{project.clientFirstName}</p>
                             <p>{project.clientLastName}</p>
                           </span>
-                          <span className="text-sm">{truncatedMessage}</span>
+                          <span className="text-sm font-normal lowercase">
+                            {truncatedMessage}
+                          </span>
                           <span className="text-xs">
                             {timeAgo(project.createdAt)}
                           </span>
@@ -167,7 +189,10 @@ const NavBar = () => {
           setOpenNotification(false);
         }}
       >
-        <img src={Man} className="h-11 rounded-full ring-2 ring-primary-500" />
+        <img
+          src={DefaultImage}
+          className="h-11 rounded-full ring-2 ring-primary-500"
+        />
         {admin && (
           <div className="ml-4 hidden flex-col text-center md:flex">
             <div className="flex gap-1">

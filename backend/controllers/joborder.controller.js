@@ -67,6 +67,7 @@ export const updateJobOrder = async (req, res) => {
             ...job,
             updatedBy: userID,
             updatedAt: new Date(),
+            jobNotificationRead: true,
         };
 
         if (job.jobStatus === "cancelled") {
