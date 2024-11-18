@@ -9,7 +9,8 @@ import {
   resetPassword,
   logout,
   getMe,
-  getAllAdmins
+  getAllAdmins,
+  updateAdmin
 } from '../controllers/auth.controller.js'; 
 
 const router = express.Router();
@@ -24,5 +25,6 @@ router.post('/reset-password/:token', resetPassword);
 router.post('/logout', logout);
 router.get('/me' , getMe);
 router.get('/admin', getAllAdmins)
+router.patch('/:id', updateAdmin)
 
 export default router;

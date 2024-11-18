@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import useCurrentTime from "../hooks/useCurrentTime";
 import { Link, useNavigate } from "react-router-dom";
 import { IoNotificationsSharp } from "react-icons/io5";
-import DefaultImage from "../../assets/default.jpg";
+import DefaultImage from "../../assets/default.webp";
 import { useAdminData } from "../../data/AdminData";
 import { useJobOrderData } from "../../data/JobOrderData";
 import { MdKeyboardArrowDown, MdOutlineLogout } from "react-icons/md";

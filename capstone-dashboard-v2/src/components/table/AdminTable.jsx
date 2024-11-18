@@ -1,27 +1,30 @@
 import React, { useEffect, useState } from "react";
 import { Title } from "../props/Title";
-import axios from "axios";
 import dayjs from "dayjs";
+import { useAdminData } from "../../data/AdminData";
 
 const AdminTable = () => {
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { getAllAdmins } = useAdminData();
 
   useEffect(() => {
     const fetchAdmins = async () => {
       try {
-        const response = await axios.get("/api/auth/admin");
-        setAdmins(response.data.data);
-      } catch (error) {
-        setError(error.response?.data?.message || "Failed to fetch admin data");
-      } finally {
+        setLoading(true);
+        const fetchedAdmins = await getAllAdmins();
+        if (fetchedAdmins) {
+          setAdmins(fetchedAdmins);
+        }
+        setLoading(false);
+      } catch (err) {
+        setError(err.message);
         setLoading(false);
       }
     };
-
     fetchAdmins();
-  }, []);
+  }, [getAllAdmins]);
 
   return (
     <div className="border border-secondary-200">
@@ -47,8 +50,8 @@ const AdminTable = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="8" className="text-center capitalize">
-                  Loading...
+                <td colSpan="8" className="h-[400px] text-center capitalize">
+                  <span className="loading loading-bars loading-lg"></span>
                 </td>
               </tr>
             ) : error ? (

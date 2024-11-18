@@ -301,3 +301,19 @@ export const getAllAdmins = async (req, res) => {
         res.status(500).json({ success: false, message: "Server Error: Failed to fetch admins" });
     }
 };
+
+    // @desc    Update a user
+    // @route   patch /api/auth/admin/:id
+    export const updateAdmin = async (req, res) => {
+        try {
+            const updatedAdmin = await Admin.findByIdAndUpdate(req.params.id, req.body, { new: true });
+            if (!updatedAdmin) {
+                return res.status(404).json({ message: 'User not found.' });
+            }
+            res.status(200).json({ success: true, data: updatedAdmin });
+        } catch (error) {
+            console.error("Error updating user:", error.message);
+            res.status(500).json({ success: false, message: "Server Error: Failed to update user" });
+        }
+    };
+    

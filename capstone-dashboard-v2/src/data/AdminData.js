@@ -206,4 +206,38 @@ export const useAdminData = create((set) => ({
       });
     }
   },
+
+  // Get all admins
+  getAllAdmins: async () => {
+    set({ loading: true, error: null });
+  
+    try {
+      const res = await axios.get("/api/auth/admin");
+      set({ admins: res.data.data, loading: false });
+      return res.data.data;
+    } catch (error) {
+      set({ 
+        error: error.response?.data?.message || error.message, 
+        loading: false 
+      });
+    }
+  },
+
+// Update admin details
+updateAdmin: async (formData) => {
+  set({ loading: true, error: null });
+  try {
+    const res = await axios.patch(`/api/auth/${formData._id}`, formData);
+    set((state) => ({
+      admins: state.admins.map((admin) => (admin._id === formData._id ? res.data : admin)),
+    }));
+    return res.data;
+  } catch (error) {
+    set({
+      error: error.response?.data?.message || error.message,
+      loading: false,
+    });
+  }
+},
+
 }));

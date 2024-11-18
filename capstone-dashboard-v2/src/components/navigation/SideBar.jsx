@@ -3,8 +3,8 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAdminData } from "../../data/AdminData";
 
 //png
-import Logo from "../../assets/Mr.QuickFixLogo.png";
-import Icon from "../../assets/Mr. Quick Fix icon.png";
+import Logo from "../../assets/Mr.QuickFixLogo.webp";
+import Icon from "../../assets/Mr. Quick Fix icon.webp";
 
 //icons
 import { IoChevronDownOutline } from "react-icons/io5";
@@ -36,7 +36,7 @@ const SideBar = () => {
 
   return (
     <div
-      className={`sticky top-0 z-50 hidden h-screen shadow-md duration-300 md:block ${
+      className={`sticky select-none top-0 z-50 hidden h-screen shadow-md duration-300 md:block ${
         openMenu ? "w-24 bg-secondary-950" : "w-[300px] bg-white px-4"
       }`}
     >

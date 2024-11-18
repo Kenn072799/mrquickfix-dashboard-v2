@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Title } from "../props/Title";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import bg from "../../assets/bg.png";
-import logo from "../../assets/Mr.QuickFixLogo.png";
+import bg from "../../assets/bg.webp";
+import logo from "../../assets/Mr.QuickFixLogo.webp";
 import { TbEye, TbEyeClosed } from "react-icons/tb";
 import { useAdminData } from "../../data/AdminData";
 import Swal from "sweetalert2";
