@@ -378,7 +378,7 @@ const InquiryTable = () => {
                           </div>
                         </td>
                         <td>{inquiry.clientMessage || "N/A"}</td>
-                        <td className="flex items-center justify-end gap-3">
+                        <td>
                           <div className="flex gap-3">
                             {/* Form Received Button */}
                             {inquiry.inquiryStatus === "pending" && (

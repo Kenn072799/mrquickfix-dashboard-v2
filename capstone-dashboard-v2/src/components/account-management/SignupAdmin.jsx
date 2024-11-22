@@ -70,7 +70,16 @@ const SignupAdmin = ({ onClose }) => {
     try {
       await completeDetails({ firstName, lastName, phone }, email);
       onClose();
-      Swal.fire("Success", "Registration completed successfully!", "success");
+      Swal.fire({
+        title: "Success",
+        text: "Registration completed successfully!",
+        icon: "success",
+        confirmButtonText: "OK",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.reload();
+        }
+      });
     } catch (err) {
       console.error("Profile completion error:", err);
       Swal.fire(

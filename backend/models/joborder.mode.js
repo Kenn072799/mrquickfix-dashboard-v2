@@ -93,6 +93,10 @@ const joborderSchema = new mongoose.Schema({
         type: String,
         required: false
     },
+    jobNote : {
+        type: String,
+        required: false
+    },
     // Inquiry Status
     inquiryStatus: {
         type: String,

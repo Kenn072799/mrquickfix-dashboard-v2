@@ -16,6 +16,7 @@ const TrackJobOrder = () => {
 
   useEffect(() => {
     document.title = "Mr. Quick Fix | Track Job Order";
+    window.scrollTo(0, 0);
   }, []);
 
   const setNewJobOrder = (newJobOrder) => {

@@ -31,6 +31,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     document.title = "Mr. Quick Fix | Dashboard";
+    window.scrollTo(0, 0);
     const loadProjects = async () => {
       await fetchProjects();
       setIsLoading(false);

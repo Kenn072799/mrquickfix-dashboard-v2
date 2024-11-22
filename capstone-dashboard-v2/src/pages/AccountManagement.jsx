@@ -8,6 +8,7 @@ import AdminTable from "../components/table/AdminTable";
 const AccountManagement = () => {
   useEffect(() => {
     document.title = "Mr. Quick Fix | Account Management";
+    window.scrollTo(0, 0);
   }, []);
 
   const [isOpen, setIsOpen] = useState(false);

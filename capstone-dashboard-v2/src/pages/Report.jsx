@@ -14,6 +14,7 @@ const Report = () => {
 
   useEffect(() => {
     document.title = "Mr. Quick Fix | Reports";
+    window.scrollTo(0, 0);
     const fetchData = async () => {
       setLoading(true);
       await fetchProjects();
@@ -24,11 +25,9 @@ const Report = () => {
 
   return (
     <div className="mt-16 min-h-screen p-4 lg:p-8">
-      <div className="pb-4">
-        <Title variant="secondaryBold" size="xxxl">
-          Reports
-        </Title>
-      </div>
+      <Title variant="secondaryBold" size="xxxl">
+        Reports
+      </Title>
 
       {/* Charts Section */}
       <Title variant="secondaryNormal" size="xl">

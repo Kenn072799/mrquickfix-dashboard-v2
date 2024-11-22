@@ -61,10 +61,20 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     setQuotationUploaded(!!file);
-    setNewJobOrder((prev) => ({
-      ...prev,
-      jobQuotation: file ? file.name : "",
-    }));
+  
+    if (!file) {
+      setNewJobOrder((prev) => ({
+        ...prev,
+        jobQuotation: "",
+        jobStartDate: "",
+        jobEndDate: "",
+      }));
+    } else {
+      setNewJobOrder((prev) => ({
+        ...prev,
+        jobQuotation: file.name,
+      }));
+    }
   };
 
   const handleSchedInspectionChange = (e) => {

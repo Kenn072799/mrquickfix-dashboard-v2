@@ -32,6 +32,8 @@ import {
   TbChevronRight,
   TbChevronLeft,
   TbArchive,
+  TbNote,
+  TbCirclePlus,
 } from "react-icons/tb";
 import Relax from "../../assets/undraw_A_moment_to_relax_re_v5gv.png";
 import { useJobAlerts } from "../../data/useJobAlerts";
@@ -58,6 +60,10 @@ const MainTable = ({ setSelectedJobOrder }) => {
   const statusOrder = ["on process", "in progress", "completed", "cancelled"];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const [openNote, setOpenNote] = useState(false);
+  const [jobNote, setJobNote] = useState("");
+  const [jobOrderForNote, setJobOrderForNote] = useState(null);
+  const [viewNote, setViewNote] = useState(false);
 
   const { alertInspectionTomorrow, alertInspectionToday, alertWaitingUpdate } =
     useJobAlerts(today);
@@ -584,6 +590,106 @@ const MainTable = ({ setSelectedJobOrder }) => {
     }
   };
 
+  const handleNoteModal = (jobOrder) => {
+    setJobOrderForNote(jobOrder);
+    setOpenNote(true);
+  };
+
+  const handleSubmitNote = async (jobOrderId) => {
+    if (!jobNote) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Please write a note.",
+      });
+      return;
+    }
+
+    try {
+      const result = await Swal.fire({
+        title: "Do you want to add this note?",
+        showCancelButton: true,
+        confirmButtonText: "Yes, Add",
+        icon: "question",
+      });
+
+      if (result.isConfirmed) {
+        const userID = localStorage.getItem("userID");
+
+        if (!userID) {
+          Swal.fire(
+            "Error",
+            "User ID is required to add a note to the job order.",
+            "error",
+          );
+          return;
+        }
+
+        const updatedJob = {
+          ...jobOrderForNote,
+          jobNote: jobNote,
+          createdBy: userID,
+          updatedBy: userID,
+        };
+
+        const { success, message } = await updateJobOrder(
+          jobOrderId,
+          updatedJob,
+        );
+
+        if (!success) {
+          Swal.fire("Oops...", message, "error");
+        } else {
+          setOpenNote(false);
+          setJobNote("");
+          Swal.fire("Added!", "Note added successfully!", "success");
+        }
+      }
+    } catch (error) {
+      Swal.fire("Error", "Failed to add note.", "error");
+      console.error("Error adding note:", error);
+    }
+  };
+
+  const handleViewNote = (jobOrder) => {
+    setJobOrderForNote(jobOrder);
+    setViewNote(true);
+  };
+
+  const handleRemoveNote = async (jobOrderId) => {
+    try {
+      const result = await Swal.fire({
+        title: "Are you sure you want to remove this note?",
+        showCancelButton: true,
+        confirmButtonText: "Yes, Remove",
+        icon: "warning",
+      });
+
+      if (result.isConfirmed) {
+        const updatedJob = {
+          ...jobOrderForNote,
+          jobNote: "",
+        };
+
+        const { success, message } = await updateJobOrder(
+          jobOrderId,
+          updatedJob,
+        );
+
+        if (!success) {
+          Swal.fire("Oops...", message, "error");
+        } else {
+          Swal.fire("Removed!", "Note removed successfully!", "success");
+          setViewNote(false);
+          setJobNote("");
+        }
+      }
+    } catch (error) {
+      Swal.fire("Error", "Failed to remove note.", "error");
+      console.error("Error deleting note:", error);
+    }
+  };
+
   return (
     <div className="border border-secondary-200 bg-white">
       <div className="border-b border-secondary-200 bg-secondary-100 px-4 py-2">
@@ -659,6 +765,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
                 <th className="min-w-[200px]">Job Type</th>
                 <th className="min-w-[130px]">Status</th>
                 <th className="w-full">Alert</th>
+                <th className="min-w-[100px]">Note</th>
                 <th className="min-w-[150px]">Action</th>
               </tr>
             </thead>
@@ -675,9 +782,9 @@ const MainTable = ({ setSelectedJobOrder }) => {
                 {paginatedData.map((jobOrder, index) => (
                   <tr
                     key={jobOrder.id || index}
-                    className="text-sm uppercase hover:bg-secondary-50"
+                    className="group relative text-sm uppercase hover:bg-secondary-50"
                   >
-                    <td>{index + 1}</td>
+                    <td>{(currentPage - 1) * entriesToShow + (index + 1)}</td>
                     <td>{jobOrder.projectID}</td>
                     <td>
                       {jobOrder.clientFirstName} {jobOrder.clientLastName}
@@ -764,12 +871,11 @@ const MainTable = ({ setSelectedJobOrder }) => {
                         </div>
                       ) : null}
                     </td>
-                    <td className="flex items-center justify-end gap-3">
-                      {/* Actions based on job status */}
-                      {jobOrder.jobStatus === "completed" ||
-                      jobOrder.jobStatus === "cancelled" ? (
+                    <td>
+                      {/* if the note have a data then show the note otherwise show the add button */}
+                      {jobOrder.jobNote ? (
                         <Tooltip
-                          content="Archive"
+                          content="View Note"
                           className="!bg-opacity-60"
                           placement="left"
                           animate={{
@@ -778,18 +884,39 @@ const MainTable = ({ setSelectedJobOrder }) => {
                           }}
                         >
                           <Button
-                            className="!bg-gray-500 !p-1"
-                            onClick={() => handleArchiveProject(jobOrder)}
+                            className="!bg-amber-500 !p-1"
+                            onClick={() => handleViewNote(jobOrder)}
                           >
-                            <TbArchive className="text-[20px]" />
+                            <TbNote className="text-[20px]" />
                           </Button>
                         </Tooltip>
-                      ) : null}
-                      {jobOrder.jobStatus === "on process" ? (
-                        jobOrder.jobNotificationAlert ===
-                        "ready for quotation" ? (
+                      ) : (
+                        <Tooltip
+                          content="Add Note"
+                          className="!bg-opacity-60"
+                          placement="left"
+                          animate={{
+                            mount: { scale: 1, y: 0 },
+                            unmount: { scale: 0, y: 25 },
+                          }}
+                        >
+                          <Button
+                            variant="text"
+                            className="!p-1 !text-red-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                            onClick={() => handleNoteModal(jobOrder)}
+                          >
+                            <TbCirclePlus className="text-[20px]" />
+                          </Button>
+                        </Tooltip>
+                      )}
+                    </td>
+                    <td>
+                      <div className="flex gap-3">
+                        {/* Actions based on job status */}
+                        {jobOrder.jobStatus === "completed" ||
+                        jobOrder.jobStatus === "cancelled" ? (
                           <Tooltip
-                            content="Add Quotation"
+                            content="Archive"
                             className="!bg-opacity-60"
                             placement="left"
                             animate={{
@@ -798,18 +925,111 @@ const MainTable = ({ setSelectedJobOrder }) => {
                             }}
                           >
                             <Button
-                              className="!bg-green-500 !p-1"
-                              onClick={() => {
-                                setUpdatedProject(jobOrder);
-                                setOpenQuotationModal(true);
-                              }}
+                              className="!bg-gray-500 !p-1"
+                              onClick={() => handleArchiveProject(jobOrder)}
                             >
-                              <TbFilePlus className="text-[20px]" />
+                              <TbArchive className="text-[20px]" />
                             </Button>
                           </Tooltip>
-                        ) : (
+                        ) : null}
+                        {jobOrder.jobStatus === "on process" ? (
+                          jobOrder.jobNotificationAlert ===
+                          "ready for quotation" ? (
+                            <Tooltip
+                              content="Add Quotation"
+                              className="!bg-opacity-60"
+                              placement="left"
+                              animate={{
+                                mount: { scale: 1, y: 0 },
+                                unmount: { scale: 0, y: 25 },
+                              }}
+                            >
+                              <Button
+                                className="!bg-green-500 !p-1"
+                                onClick={() => {
+                                  setUpdatedProject(jobOrder);
+                                  setOpenQuotationModal(true);
+                                }}
+                              >
+                                <TbFilePlus className="text-[20px]" />
+                              </Button>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip
+                              content="Finish Inspection"
+                              className="!bg-opacity-60"
+                              placement="left"
+                              animate={{
+                                mount: { scale: 1, y: 0 },
+                                unmount: { scale: 0, y: 25 },
+                              }}
+                            >
+                              <Button
+                                className="!bg-red-500 !p-1"
+                                onClick={() => handleFinishInspection(jobOrder)}
+                              >
+                                <TbFlagCheck className="text-[20px]" />
+                              </Button>
+                            </Tooltip>
+                          )
+                        ) : jobOrder.jobStatus === "in progress" ? (
+                          jobOrder.jobNotificationAlert ===
+                          "ongoing project" ? (
+                            <Tooltip
+                              content="Complete Project"
+                              className="!bg-opacity-60"
+                              placement="left"
+                              animate={{
+                                mount: { scale: 1, y: 0 },
+                                unmount: { scale: 0, y: 25 },
+                              }}
+                            >
+                              <Button
+                                className="!bg-green-500 !p-1"
+                                onClick={() => handleCompleteProject(jobOrder)}
+                              >
+                                <TbCircleCheck className="text-[20px]" />
+                              </Button>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip
+                              content="Start Project"
+                              className="!bg-opacity-60"
+                              placement="left"
+                              animate={{
+                                mount: { scale: 1, y: 0 },
+                                unmount: { scale: 0, y: 25 },
+                              }}
+                            >
+                              <Button
+                                className="!bg-orange-500 !p-1"
+                                onClick={() => handleStartProject(jobOrder)}
+                              >
+                                <TbPlayerPlay className="text-[20px]" />
+                              </Button>
+                            </Tooltip>
+                          )
+                        ) : null}
+                        <Tooltip
+                          content="View Details"
+                          className="!bg-opacity-60"
+                          placement="left"
+                          animate={{
+                            mount: { scale: 1, y: 0 },
+                            unmount: { scale: 0, y: 25 },
+                          }}
+                        >
+                          <Button
+                            className="!bg-blue-500 !p-1"
+                            onClick={() => setSelectedJobOrder(jobOrder)}
+                          >
+                            <TbEye className="text-[20px]" />
+                          </Button>
+                        </Tooltip>
+                        {jobOrder.jobStatus === "cancelled" ||
+                        jobOrder.jobStatus === "completed" ? null : (
                           <Tooltip
-                            content="Finish Inspection"
+                            content="Cancel Project"
                             className="!bg-opacity-60"
                             placement="left"
                             animate={{
@@ -819,87 +1039,16 @@ const MainTable = ({ setSelectedJobOrder }) => {
                           >
                             <Button
                               className="!bg-red-500 !p-1"
-                              onClick={() => handleFinishInspection(jobOrder)}
+                              onClick={() => {
+                                setSelectedJobOrderForCancel(jobOrder);
+                                setOpenCancelModal(true);
+                              }}
                             >
-                              <TbFlagCheck className="text-[20px]" />
+                              <TbCircleX className="text-[20px]" />
                             </Button>
                           </Tooltip>
-                        )
-                      ) : jobOrder.jobStatus === "in progress" ? (
-                        jobOrder.jobNotificationAlert === "ongoing project" ? (
-                          <Tooltip
-                            content="Complete Project"
-                            className="!bg-opacity-60"
-                            placement="left"
-                            animate={{
-                              mount: { scale: 1, y: 0 },
-                              unmount: { scale: 0, y: 25 },
-                            }}
-                          >
-                            <Button
-                              className="!bg-green-500 !p-1"
-                              onClick={() => handleCompleteProject(jobOrder)}
-                            >
-                              <TbCircleCheck className="text-[20px]" />
-                            </Button>
-                          </Tooltip>
-                        ) : (
-                          <Tooltip
-                            content="Start Project"
-                            className="!bg-opacity-60"
-                            placement="left"
-                            animate={{
-                              mount: { scale: 1, y: 0 },
-                              unmount: { scale: 0, y: 25 },
-                            }}
-                          >
-                            <Button
-                              className="!bg-orange-500 !p-1"
-                              onClick={() => handleStartProject(jobOrder)}
-                            >
-                              <TbPlayerPlay className="text-[20px]" />
-                            </Button>
-                          </Tooltip>
-                        )
-                      ) : null}
-                      <Tooltip
-                        content="View Details"
-                        className="!bg-opacity-60"
-                        placement="left"
-                        animate={{
-                          mount: { scale: 1, y: 0 },
-                          unmount: { scale: 0, y: 25 },
-                        }}
-                      >
-                        <Button
-                          className="!bg-blue-500 !p-1"
-                          onClick={() => setSelectedJobOrder(jobOrder)}
-                        >
-                          <TbEye className="text-[20px]" />
-                        </Button>
-                      </Tooltip>
-                      {jobOrder.jobStatus === "cancelled" ||
-                      jobOrder.jobStatus === "completed" ? null : (
-                        <Tooltip
-                          content="Cancel Project"
-                          className="!bg-opacity-60"
-                          placement="left"
-                          animate={{
-                            mount: { scale: 1, y: 0 },
-                            unmount: { scale: 0, y: 25 },
-                          }}
-                        >
-                          <Button
-                            className="!bg-red-500 !p-1"
-                            onClick={() => {
-                              setSelectedJobOrderForCancel(jobOrder);
-                              setOpenCancelModal(true);
-                            }}
-                          >
-                            <TbCircleX className="text-[20px]" />
-                          </Button>
-                        </Tooltip>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -907,7 +1056,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
             ) : (
               <tbody>
                 <tr>
-                  <td colSpan="7" className="text-center capitalize">
+                  <td colSpan="8" className="text-center capitalize">
                     <img
                       src={Relax}
                       alt="Relax"
@@ -1069,6 +1218,124 @@ const MainTable = ({ setSelectedJobOrder }) => {
             </div>
           </div>
         </>
+      )}
+
+      {openNote && jobOrderForNote && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center rounded-md bg-black/20">
+          <div className="animate-fade-down animate-duration-[400ms] animate-ease-out">
+            <div className="w-[400px] max-w-[500px]">
+              <div className="flex items-center justify-between rounded-t-md border border-b-0 border-secondary-300 bg-secondary-100 px-4 py-2">
+                <Title>Create a Note</Title>
+                <div
+                  className="flex cursor-pointer items-center rounded-full p-2 text-secondary-900 hover:bg-secondary-200 active:bg-secondary-200/50 active:text-secondary-500"
+                  onClick={() => setOpenNote(false) || setJobNote("")}
+                >
+                  <button>
+                    <TbX />
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 rounded-b-md border border-secondary-300 bg-white p-4">
+                <span className="text-sm font-bold">
+                  For project id: {jobOrderForNote.projectID}
+                </span>
+                <Textarea
+                  variant="static"
+                  placeholder="Write your note"
+                  value={jobNote}
+                  onChange={(e) => setJobNote(e.target.value)}
+                />
+                <div className="flex justify-end gap-2">
+                  <div className="whitespace-nowrap">
+                    <Button
+                      variant="text"
+                      onClick={() => setJobNote("")}
+                      className="w-full text-red-500 shadow-none hover:shadow-none"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                  <div className="whitespace-nowrap">
+                    <Button
+                      onClick={() => handleSubmitNote(jobOrderForNote._id)}
+                      className="!bg-gray-300 text-black shadow-none hover:shadow-none"
+                    >
+                      Add Note
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewNote && jobOrderForNote && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center rounded-md bg-black/20">
+          <div className="animate-fade-down animate-duration-[400ms] animate-ease-out">
+            <div className="w-[400px] max-w-[500px]">
+              <div className="flex items-center justify-between rounded-t-md border border-b-0 border-secondary-300 bg-secondary-100 px-4 py-2">
+                <Title>Note</Title>
+                <div
+                  className="flex cursor-pointer items-center rounded-full p-2 text-secondary-900 hover:bg-secondary-200 active:bg-secondary-200/50 active:text-secondary-500"
+                  onClick={() => setViewNote(false)}
+                >
+                  <button>
+                    <TbX />
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 rounded-b-md border border-secondary-300 bg-white p-4">
+                <div className="flex flex-col gap-2">
+                  {jobOrderForNote.jobNote && (
+                    <div className="flex flex-col gap-5 rounded-md border border-secondary-300 bg-secondary-50 p-2">
+                      <div className="flex items-center gap-2">
+                        <span>{jobOrderForNote.jobNote}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col text-secondary-400">
+                          <span className="text-xs font-bold">
+                            {jobOrderForNote.createdBy.firstName &&
+                              jobOrderForNote.updatedBy.firstName}{" "}
+                            {jobOrderForNote.createdBy.lastName &&
+                              jobOrderForNote.updatedBy.lastName}
+                          </span>
+                          <span className="text-xs">
+                            {new Date(
+                              jobOrderForNote.createdAt,
+                            ).toLocaleString() &&
+                              new Date(
+                                jobOrderForNote.updatedAt,
+                              ).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    size="sm"
+                    variant="text"
+                    color="red"
+                    onClick={() => handleRemoveNote(jobOrderForNote._id)}
+                  >
+                    Remove
+                  </Button>
+                  <Button
+                    className="flex items-center gap-2"
+                    size="sm"
+                    variant="outlined"
+                    onClick={() => setOpenNote(true) || setViewNote(false)}
+                  >
+                    <TbCirclePlus className="text-[18px]" />
+                    Create New
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

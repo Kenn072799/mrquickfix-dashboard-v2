@@ -183,7 +183,7 @@ const CompletedTableReport = ({ projects, loading, error }) => {
                   key={project.id || index}
                   className="text-sm uppercase hover:bg-secondary-50"
                 >
-                  <td>{index + 1}</td>
+                  <td>{filteredProjects.indexOf(project) + 1}</td>
                   <td>{project.projectID}</td>
                   <td>{project.clientFirstName}</td>
                   <td>{project.clientLastName}</td>

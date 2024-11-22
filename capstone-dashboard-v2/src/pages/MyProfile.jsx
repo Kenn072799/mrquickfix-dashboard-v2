@@ -8,6 +8,7 @@ const MyProfile = () => {
 
   useEffect(() => {
     document.title = "Mr. Quick Fix | My Profile";
+    window.scrollTo(0, 0);
     getLoggedInAdmin();
   }, [getLoggedInAdmin]);
 

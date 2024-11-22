@@ -142,7 +142,16 @@ const ProfileCard = ({ admin }) => {
 
       setLoading(false);
       setOpenEdit(false);
-      Swal.fire("Success", "Profile updated successfully!", "success");
+      Swal.fire({
+        title: "Success",
+        text: "Profile updated successfully.",
+        icon: "success",
+        confirmButtonText: "OK",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.reload();
+        }
+      });
     } catch (err) {
       setLoading(false);
       setError("Failed to update profile. Please try again.");

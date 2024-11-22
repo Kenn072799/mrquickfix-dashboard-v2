@@ -14,6 +14,7 @@ import ForgotPassword from "./components/login/ForgotPassword";
 import ResetPassword from "./components/login/ResetPassword";
 import Report from "./pages/Report";
 import MyProfile from "./pages/MyProfile";
+import ContentManagement from "./pages/ContentManagement";
 
 const isTokenExpired = (token) => {
   if (!token) return true; // No token means expired
@@ -82,6 +83,7 @@ function App() {
             { path: "/account-management", element: <AccountManagement /> },
             { path: "/reports", element: <Report /> },
             { path: "/my-profile", element: <MyProfile /> },
+            { path: "/content-management", element: <ContentManagement /> },
           ],
         },
       ],
