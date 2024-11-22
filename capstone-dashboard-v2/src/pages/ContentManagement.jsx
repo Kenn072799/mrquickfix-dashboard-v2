@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Title } from "../components/props/Title";
 import ProjectTable from "../components/table/ProjectTable";
 import { TbPlus, TbUpload, TbX } from "react-icons/tb";
@@ -27,6 +27,11 @@ const ContentManagement = () => {
   const [openAddService, setOpenAddService] = useState(false);
   const [imageService, setImageService] = useState(null);
   const [newService, setNewService] = useState({ serviceName: "" });
+
+  useEffect(() => {
+    document.title = "Mr. Quick Fix | Content Management";
+    window.scrollTo(0, 0);
+  }, []);
 
   const servicesList = [
     "Fits-outs (Painting, Carpentry, Masonry)",
