@@ -289,7 +289,7 @@ const ProfileCard = ({ admin }) => {
             </div>
 
             <div>
-              <div className="font-medium">Joined date:</div>
+              <div className="font-medium">Created date:</div>
               <div className="font-bold">
                 {dayjs(admin.createdAt).format("MMM D, YYYY")}
               </div>

@@ -24,7 +24,7 @@ const AccountManagement = () => {
   };
 
   return (
-    <div className="mt-16 min-h-screen p-4 lg:p-8">
+    <div className="mt-16 min-h-[calc(100vh-64px)] p-4 lg:p-8">
       <div className="pb-4">
         <Title variant="secondaryBold" size="xxxl">
           Account Management

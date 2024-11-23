@@ -20,6 +20,11 @@ const adminSchema = new mongoose.Schema({
   phone: {
     type: String, 
   },
+  adminStatus: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active',
+  },
   profilePicture: {
     type: String, 
   },

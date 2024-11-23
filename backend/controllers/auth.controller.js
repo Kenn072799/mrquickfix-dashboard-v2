@@ -146,6 +146,10 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: 'Invalid email or does not exist.' });
     }
 
+    if (user.adminStatus === 'inactive') {
+      return res.status(400).json({ message: 'Your account is inactive. Please contact other admin.' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Password incorrect. Please try again!' });
@@ -167,8 +171,6 @@ export const login = async (req, res) => {
   }
 };
 
-
-
 // @desc    Initiate forgot password (send reset link)
 // @route   POST /api/auth/forgot-password
 export const forgotPassword = async (req, res) => {
@@ -178,6 +180,10 @@ export const forgotPassword = async (req, res) => {
     const user = await Admin.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: 'Email not found. Please try again.' });
+    }
+
+    if (user.adminStatus === 'inactive') {
+      return res.status(400).json({ message: 'Your account email is inactive. Please contact other admin.' });
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -210,7 +216,7 @@ export const resetPassword = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired token' });
+      return res.status(400).json({ message: 'The password reset link has expired. Please send a new request' });
     }else if(newPassword.length < 8){
         return res.status(400).json({ message: 'Password must be at least 8 characters long' });
     }else if(newPassword.length > 32){
@@ -316,4 +322,48 @@ export const getAllAdmins = async (req, res) => {
             res.status(500).json({ success: false, message: "Server Error: Failed to update user" });
         }
     };
-    
+
+// @desc    Deactivate an admin user (set status to 'inactive')
+// @route   PATCH /api/auth/admin/:id
+export const deactivateAdmin = async (req, res) => {
+    try {
+        const updatedAdmin = await Admin.findByIdAndUpdate(req.params.id, { adminStatus: 'inactive' }, { new: true });
+        if (!updatedAdmin) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+        res.status(200).json({ success: true, data: updatedAdmin });
+    } catch (error) {
+        console.error("Error updating user:", error.message);
+        res.status(500).json({ success: false, message: "Server Error: Failed to update user" });
+    }
+};
+
+// @desc    Activate an admin user (set status to 'active')
+// @route   PATCH /api/auth/admin/activate/:id
+export const activateAdmin = async (req, res) => {
+    try {
+        const updatedAdmin = await Admin.findByIdAndUpdate(req.params.id, { adminStatus: 'active' }, { new: true });
+        if (!updatedAdmin) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+        res.status(200).json({ success: true, data: updatedAdmin });
+    } catch (error) {
+        console.error("Error updating user:", error.message);
+        res.status(500).json({ success: false, message: "Server Error: Failed to update user" });
+    }
+};
+
+// @desc  Delete a admin user
+// @route   DELETE /api/auth/admin/:id
+export const deleteAdmin = async (req, res) => {
+    try {
+        const deletedAdmin = await Admin.findByIdAndDelete(req.params.id);
+        if (!deletedAdmin) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+        res.status(200).json({ success: true, data: deletedAdmin });
+    } catch (error) {
+        console.error("Error deleting user:", error.message);
+        res.status(500).json({ success: false, message: "Server Error: Failed to delete user" });
+    }
+};

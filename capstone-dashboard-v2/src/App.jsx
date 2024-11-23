@@ -15,6 +15,7 @@ import ResetPassword from "./components/login/ResetPassword";
 import Report from "./pages/Report";
 import MyProfile from "./pages/MyProfile";
 import ContentManagement from "./pages/ContentManagement";
+import Swal from "sweetalert2";
 
 const isTokenExpired = (token) => {
   if (!token) return true; // No token means expired
@@ -22,33 +23,63 @@ const isTokenExpired = (token) => {
   return decoded.exp * 1000 < Date.now();
 };
 
-function App() {
-  const handleLogout = async () => {
-    try {
-      await axios.post(
-        "/api/auth/logout",
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-          },
+const handleLogout = async () => {
+  try {
+    await axios.post(
+      "/api/auth/logout",
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
         },
-      );
-      localStorage.removeItem("authToken");
-      localStorage.setItem("isLoggedIn", "false");
-      window.location.href = "/login-admin";
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
+      },
+    );
+    localStorage.removeItem("authToken");
+    localStorage.setItem("isLoggedIn", "false");
+    window.location.href = "/login-admin";
+  } catch (error) {
+    console.error("Logout failed:", error);
+  }
+};
 
-  const checkToken = () => {
-    const token = localStorage.getItem("authToken");
-    if (isTokenExpired(token)) {
+const checkToken = async () => {
+  const token = localStorage.getItem("authToken");
+  if (!token || isTokenExpired(token)) {
+    handleLogout();
+    return;
+  }
+
+  try {
+    const decoded = jwtDecode(token);
+    decoded.userId;
+
+    const response = await axios.get(`/api/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const userStatus = response.data.data.adminStatus;
+
+    if (userStatus === "inactive") {
       handleLogout();
     }
-  };
+  } catch (error) {
+    if (error.response && error.response.status === 404) {
+      Swal.fire("Error", "Account not found", "error");
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("userID");
+      localStorage.setItem("isLoggedIn", "false");
+      window.location.href = "/login-admin";
+      return;
+    } else {
+      console.error("Error checking user status:", error);
+    }
+    handleLogout();
+  }
+};
 
+function App() {
   useEffect(() => {
     checkToken();
   }, []);

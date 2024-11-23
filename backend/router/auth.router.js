@@ -10,7 +10,10 @@ import {
   logout,
   getMe,
   getAllAdmins,
-  updateAdmin
+  updateAdmin,
+  deactivateAdmin,
+  activateAdmin,
+  deleteAdmin
 } from '../controllers/auth.controller.js'; 
 
 const router = express.Router();
@@ -26,5 +29,8 @@ router.post('/logout', logout);
 router.get('/me' , getMe);
 router.get('/admin', getAllAdmins)
 router.patch('/:id', updateAdmin)
+router.patch('/deactivate/:id', deactivateAdmin)
+router.patch('/activate/:id', activateAdmin)
+router.delete('/delete/:id', deleteAdmin)
 
 export default router;

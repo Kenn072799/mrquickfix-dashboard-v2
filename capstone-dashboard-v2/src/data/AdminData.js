@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 
 export const useAdminData = create((set) => ({
   admin: null,
+  admins: [],
   loading: false,
   error: null,
   resendStatus: null,
@@ -239,5 +240,68 @@ updateAdmin: async (formData) => {
     });
   }
 },
+
+  // Deactivate admin
+  deactivateAdmin: async (adminId) => {
+    set({ loading: true, error: null });
+    try {
+      const res = await axios.patch(`/api/auth/deactivate/${adminId}`);
+      set((state) => ({
+        admins: state.admins.map((admin) =>
+          admin._id === adminId ? { ...admin, adminStatus: "inactive" } : admin
+        ),
+        loading: false,
+      }));
+      return res.data;
+    } catch (error) {
+      set({
+        error: error.response?.data?.message || error.message,
+        loading: false,
+      });
+      Swal.fire("Error", error.response?.data?.message || "Failed to deactivate admin.", "error");
+      throw error;
+    }
+  },
+
+  // Activate admin
+  activateAdmin: async (adminId) => {
+    set({ loading: true, error: null });
+    try {
+      const res = await axios.patch(`/api/auth/activate/${adminId}`);
+      set((state) => ({
+        admins: state.admins.map((admin) =>
+          admin._id === adminId ? { ...admin, adminStatus: "active" } : admin
+        ),
+        loading: false,
+      }));
+      return res.data;
+    } catch (error) {
+      set({
+        error: error.response?.data?.message || error.message,
+        loading: false,
+      });
+      Swal.fire("Error", error.response?.data?.message || "Failed to activate admin.", "error");
+      throw error;
+    }
+  },
+
+  // Delete admin
+  deleteAdmin: async (adminId) => {
+    set({ loading: true, error: null });
+    try {
+      await axios.delete(`/api/auth/delete/${adminId}`);
+      set((state) => ({
+        admins: state.admins.filter((admin) => admin._id !== adminId),
+        loading: false,
+      }));
+    } catch (error) {
+      set({
+        error: error.response?.data?.message || error.message,
+        loading: false,
+      });
+      Swal.fire("Error", error.response?.data?.message || "Failed to delete admin.", "error");
+      throw error;
+    }
+  },
 
 }));
