@@ -39,7 +39,9 @@ export const addJobOrder = async (req, res) => {
 // Get all job orders
 export const getJobOrders = async (req, res) => {
     try {
-        const jobs = await JobOrder.find({}).populate("createdBy updatedBy", "firstName lastName");
+        const jobs = await JobOrder.find({}).populate([
+            { path: "createdBy updatedBy createdNote updatedNote", select: "firstName lastName" }
+        ]);
         res.status(200).json({ success: true, data: jobs });
     } catch (error) {
         console.error("Error fetching job orders:", error.message);
@@ -88,7 +90,9 @@ export const updateJobOrder = async (req, res) => {
             id,
             updateFields,
             { new: true }
-        ).populate("createdBy updatedBy", "firstName lastName");
+        ).populate([
+            { path: "createdBy updatedBy createdNote updatedNote", select: "firstName lastName" }
+        ]);
 
         if (!updatedJob) {
             return res.status(404).json({ success: false, message: "Job order not found" });
@@ -145,4 +149,54 @@ export const archiveJobOrder = async (req, res) => {
         console.error("Error archiving job order:", error.message);
         res.status(500).json({ success: false, message: "Server Error: Failed to archive job order" });
     }
+    
 };
+
+// Update job order note
+export const updateJobOrderNote = async (req, res) => {
+    const { id } = req.params; 
+    const { noteType, noteContent, userID } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(404).json({ success: false, message: "Job order not found" });
+    }
+    if (!mongoose.Types.ObjectId.isValid(userID)) {
+        return res.status(400).json({ success: false, message: "Invalid admin ID" });
+    }
+    if (!["createdNote", "updatedNote"].includes(noteType)) {
+        return res.status(400).json({ success: false, message: "Invalid note type" });
+    }
+
+    try {
+        const updateFields = {
+            jobNote: noteContent,
+            [`${noteType}`]: userID,
+        };
+
+        if (noteType === "createdNote") {
+            updateFields.createdNoteDate = Date.now();
+        } else if (noteType === "updatedNote") {
+            updateFields.updatedNoteDate = Date.now();
+        }
+
+        const updatedJob = await JobOrder.findByIdAndUpdate(
+            id,
+            { $set: updateFields },
+            { new: true }
+        ).populate([
+            { path: "createdNote updatedNote", select: "firstName lastName" },
+        ]);
+
+        if (!updatedJob) {
+            return res.status(404).json({ success: false, message: "Job order not found" });
+        }
+
+        res.status(200).json({ success: true, data: updatedJob });
+    } catch (error) {
+        console.error("Error updating job order note:", error.message);
+        res.status(500).json({ success: false, message: "Server Error: Failed to update job order note" });
+    }
+};
+
+
+

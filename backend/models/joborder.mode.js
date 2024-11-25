@@ -93,10 +93,6 @@ const joborderSchema = new mongoose.Schema({
         type: String,
         required: false
     },
-    jobNote : {
-        type: String,
-        required: false
-    },
     // Inquiry Status
     inquiryStatus: {
         type: String,
@@ -133,7 +129,29 @@ const joborderSchema = new mongoose.Schema({
     updatedAt: { 
         type: Date, 
         default: Date.now 
-    }
+    },
+    jobNote : {
+        type: String,
+        required: false
+    },
+    createdNote: {
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: "Admin", 
+        required: false 
+    },
+    updatedNote: {
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: "Admin", 
+        required: false 
+    },
+    createdNoteDate: {
+        type: Date, 
+        default: Date.now 
+    },
+    updatedNoteDate: {
+        type: Date, 
+        default: Date.now 
+    },
 });
 
 const JobOrder = mongoose.model("JobOrder", joborderSchema);

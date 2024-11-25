@@ -275,5 +275,48 @@ export const useJobOrderData = create((set) => ({
             return { success: false, message: error.response?.data?.message || "An error occurred" };
         }
     },
+
+// Update job order note
+updateJobOrderNote: async ({ jobOrderId, noteType, noteContent }) => {
+    const userID = localStorage.getItem("userID");
+
+    if (!userID) {
+        console.error("User ID not found in localStorage.");
+        return { success: false, message: "User ID is required to update a note." };
+    }
+
+    if (!["createdNote", "updatedNote"].includes(noteType)) {
+        return { success: false, message: "Invalid note type. Must be 'createdNote' or 'updatedNote'." };
+    }
+
+    try {
+        const res = await axios.patch(`/api/job-orders/note/${jobOrderId}`, {
+            noteType,
+            noteContent,
+            userID,
+        });
+
+        const data = res.data;
+
+        if (!data.success) return { success: false, message: data.message };
+
+        set((state) => ({
+            projects: state.projects.map((project) =>
+                project._id === jobOrderId ? data.data : project
+            ),
+        }));
+
+        return { success: true, message: "Note updated successfully" };
+    } catch (error) {
+        console.error("Error updating job order note:", error.response?.data || error.message);
+        return {
+            success: false,
+            message: error.response?.data?.message || "Failed to update job order note",
+        };
+    }
+}
+
+    
+
 }));
 

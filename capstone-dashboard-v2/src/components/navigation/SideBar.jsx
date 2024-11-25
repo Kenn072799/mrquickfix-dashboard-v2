@@ -36,7 +36,7 @@ const SideBar = () => {
 
   return (
     <div
-      className={`sticky select-none top-0 z-50 hidden h-screen shadow-md duration-300 md:block ${
+      className={`sticky top-0 z-50 hidden h-screen select-none shadow-md duration-300 lg:block ${
         openMenu ? "w-24 bg-secondary-950" : "w-[300px] bg-white px-4"
       }`}
     >

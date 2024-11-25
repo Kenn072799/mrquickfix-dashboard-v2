@@ -11,7 +11,7 @@ import {
 
 const BarChartTopServices = ({ projects = [] }) => {
   const services = [
-    "Fits-outs",
+    "Fits-outs (Painting, Carpentry, Masonry)",
     "Electrical Works",
     "Kitchen and Bath Renovation",
     "Aircon Services",
@@ -36,6 +36,7 @@ const BarChartTopServices = ({ projects = [] }) => {
     .forEach((project) => {
       if (
         project.jobStatus !== "cancelled" &&
+        project.originalStatus !== "cancelled" &&
         project.jobServices &&
         Array.isArray(project.jobServices)
       ) {

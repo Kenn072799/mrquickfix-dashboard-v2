@@ -143,7 +143,7 @@ const ContentManagement = () => {
           Content Management
         </Title>
         {/* Project Table */}
-        <div className="flex max-w-[150px] py-4">
+        <div className="inline-block py-4">
           <ButtonProps onClick={() => setOpenProject(true)}>
             <TbUpload className="mr-2 text-[18px]" /> Upload Project
           </ButtonProps>
@@ -153,7 +153,7 @@ const ContentManagement = () => {
         </div>
 
         {/* Services Table */}
-        <div className="flex max-w-[170px] py-4">
+        <div className="inline-block py-4">
           <ButtonProps onClick={() => setOpenAddService(true)}>
             <TbPlus className="mr-2 text-[18px]" /> Add New Services
           </ButtonProps>

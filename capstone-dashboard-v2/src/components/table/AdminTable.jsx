@@ -35,7 +35,7 @@ const AdminTable = () => {
 
   const statusColors = {
     active: "green",
-    inactive: "gray",
+    deactivated: "gray",
   };
 
   const handleViewAccount = (admin) => {
@@ -61,7 +61,7 @@ const AdminTable = () => {
           setAdmins((prev) =>
             prev.map((admin) =>
               admin._id === adminId
-                ? { ...admin, adminStatus: "inactive" }
+                ? { ...admin, adminStatus: "deactivated" }
                 : admin,
             ),
           );

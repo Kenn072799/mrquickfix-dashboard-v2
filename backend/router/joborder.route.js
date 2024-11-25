@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { addJobOrder, getJobOrders, updateJobOrder, deleteJobOrder, archiveJobOrder } from "../controllers/joborder.controller.js";
+import { addJobOrder, getJobOrders, updateJobOrder, deleteJobOrder, archiveJobOrder, updateJobOrderNote } from "../controllers/joborder.controller.js";
 
 const router = express.Router();
 
@@ -19,6 +19,9 @@ router.delete("/:id", deleteJobOrder);
 
 // Archive job order
 router.patch("/:id", archiveJobOrder);
+
+// Note
+router.patch("/note/:id", updateJobOrderNote);
 
 
 export default router;

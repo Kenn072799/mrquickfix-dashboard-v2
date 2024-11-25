@@ -146,8 +146,8 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: 'Invalid email or does not exist.' });
     }
 
-    if (user.adminStatus === 'inactive') {
-      return res.status(400).json({ message: 'Your account is inactive. Please contact other admin.' });
+    if (user.adminStatus === 'deactivated') {
+      return res.status(400).json({ message: 'Your account is deactivated. Please contact other admin.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -182,8 +182,8 @@ export const forgotPassword = async (req, res) => {
       return res.status(400).json({ message: 'Email not found. Please try again.' });
     }
 
-    if (user.adminStatus === 'inactive') {
-      return res.status(400).json({ message: 'Your account email is inactive. Please contact other admin.' });
+    if (user.adminStatus === 'deactivated') {
+      return res.status(400).json({ message: 'Your account email is deactivated. Please contact other admin.' });
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -323,11 +323,11 @@ export const getAllAdmins = async (req, res) => {
         }
     };
 
-// @desc    Deactivate an admin user (set status to 'inactive')
+// @desc    Deactivate an admin user (set status to 'deactivated')
 // @route   PATCH /api/auth/admin/:id
 export const deactivateAdmin = async (req, res) => {
     try {
-        const updatedAdmin = await Admin.findByIdAndUpdate(req.params.id, { adminStatus: 'inactive' }, { new: true });
+        const updatedAdmin = await Admin.findByIdAndUpdate(req.params.id, { adminStatus: 'deactivated' }, { new: true });
         if (!updatedAdmin) {
             return res.status(404).json({ message: 'User not found.' });
         }

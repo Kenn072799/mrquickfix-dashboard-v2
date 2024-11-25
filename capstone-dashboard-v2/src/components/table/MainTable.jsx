@@ -34,17 +34,24 @@ import {
   TbArchive,
   TbNote,
   TbCirclePlus,
+  TbTrash,
 } from "react-icons/tb";
 import Relax from "../../assets/undraw_A_moment_to_relax_re_v5gv.png";
 import { useJobAlerts } from "../../data/useJobAlerts";
 import { useJobAlertProgress } from "../../data/useJobAlertProgress";
+import useCurrentTime from "../hooks/useCurrentTime";
 
 const MainTable = ({ setSelectedJobOrder }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesToShow, setEntriesToShow] = useState(10);
   const [statusFilter, setStatusFilter] = useState("All");
-  const { fetchProjects, projects, updateJobOrder, alertJobOrder } =
-    useJobOrderData();
+  const {
+    fetchProjects,
+    projects,
+    updateJobOrder,
+    updateJobOrderNote,
+    alertJobOrder,
+  } = useJobOrderData();
   const [updatedProject, setUpdatedProject] = useState(null);
   const [openQuotationModal, setOpenQuotationModal] = useState(false);
   const [buttonLoading, setButtonLoading] = useState(false);
@@ -64,7 +71,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
   const [jobNote, setJobNote] = useState("");
   const [jobOrderForNote, setJobOrderForNote] = useState(null);
   const [viewNote, setViewNote] = useState(false);
-
+  const { timeAgo } = useCurrentTime();
   const { alertInspectionTomorrow, alertInspectionToday, alertWaitingUpdate } =
     useJobAlerts(today);
 
@@ -625,17 +632,16 @@ const MainTable = ({ setSelectedJobOrder }) => {
           return;
         }
 
-        const updatedJob = {
-          ...jobOrderForNote,
-          jobNote: jobNote,
-          createdBy: userID,
-          updatedBy: userID,
-        };
+        const noteType = jobOrderForNote?.createdNote
+          ? "updatedNote"
+          : "createdNote";
 
-        const { success, message } = await updateJobOrder(
+        const { success, message } = await updateJobOrderNote({
           jobOrderId,
-          updatedJob,
-        );
+          noteType,
+          noteContent: jobNote,
+          userID,
+        });
 
         if (!success) {
           Swal.fire("Oops...", message, "error");
@@ -666,15 +672,15 @@ const MainTable = ({ setSelectedJobOrder }) => {
       });
 
       if (result.isConfirmed) {
-        const updatedJob = {
-          ...jobOrderForNote,
-          jobNote: "",
-        };
+        const noteType = jobOrderForNote?.createdNote
+          ? "createdNote"
+          : "updatedNote";
 
-        const { success, message } = await updateJobOrder(
+        const { success, message } = await updateJobOrderNote({
           jobOrderId,
-          updatedJob,
-        );
+          noteType,
+          noteContent: "",
+        });
 
         if (!success) {
           Swal.fire("Oops...", message, "error");
@@ -1145,7 +1151,11 @@ const MainTable = ({ setSelectedJobOrder }) => {
                       }
                     />
                   </div>
-                  <Button onClick={handleProceed} disabled={buttonLoading}>
+                  <Button
+                    onClick={handleProceed}
+                    disabled={buttonLoading}
+                    className="bg-primary-500"
+                  >
                     {buttonLoading ? (
                       <span className="loading loading-dots loading-sm h-1 py-2"></span>
                     ) : (
@@ -1169,7 +1179,9 @@ const MainTable = ({ setSelectedJobOrder }) => {
                   <Title>Cancel Project</Title>
                   <div
                     className="flex cursor-pointer items-center rounded-full p-2 text-secondary-900 hover:bg-secondary-200 active:bg-secondary-200/50 active:text-secondary-500"
-                    onClick={() => setOpenCancelModal(false)}
+                    onClick={() =>
+                      setCancelReason("") & setOpenCancelModal(false)
+                    }
                   >
                     <button>
                       <TbX />
@@ -1295,18 +1307,24 @@ const MainTable = ({ setSelectedJobOrder }) => {
                       <div className="flex items-center gap-2">
                         <div className="flex flex-col text-secondary-400">
                           <span className="text-xs font-bold">
-                            {jobOrderForNote.createdBy.firstName &&
-                              jobOrderForNote.updatedBy.firstName}{" "}
-                            {jobOrderForNote.createdBy.lastName &&
-                              jobOrderForNote.updatedBy.lastName}
+                            {jobOrderForNote.updatedNote ? (
+                              <>
+                                {jobOrderForNote.updatedNote.firstName}{" "}
+                                {jobOrderForNote.updatedNote.lastName}
+                              </>
+                            ) : (
+                              <>
+                                {jobOrderForNote.createdNote.firstName}{" "}
+                                {jobOrderForNote.createdNote.lastName}
+                              </>
+                            )}
                           </span>
                           <span className="text-xs">
-                            {new Date(
-                              jobOrderForNote.createdAt,
-                            ).toLocaleString() &&
-                              new Date(
-                                jobOrderForNote.updatedAt,
-                              ).toLocaleString()}
+                            {jobOrderForNote.updatedNote ? (
+                              <>{timeAgo(jobOrderForNote.updatedNoteDate)}</>
+                            ) : (
+                              <>{timeAgo(jobOrderForNote.createdNoteDate)}</>
+                            )}
                           </span>
                         </div>
                       </div>
@@ -1314,23 +1332,42 @@ const MainTable = ({ setSelectedJobOrder }) => {
                   )}
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button
-                    size="sm"
-                    variant="text"
-                    color="red"
-                    onClick={() => handleRemoveNote(jobOrderForNote._id)}
+                  <Tooltip
+                    content="Remove Note"
+                    className="!bg-opacity-60"
+                    placement="top"
+                    animate={{
+                      mount: { scale: 1, y: 0 },
+                      unmount: { scale: 0, y: 25 },
+                    }}
                   >
-                    Remove
-                  </Button>
-                  <Button
-                    className="flex items-center gap-2"
-                    size="sm"
-                    variant="outlined"
-                    onClick={() => setOpenNote(true) || setViewNote(false)}
+                    <Button
+                      className="flex items-center gap-2 bg-red-500 shadow-none hover:shadow-none"
+                      size="sm"
+                      variant="filled"
+                      onClick={() => handleRemoveNote(jobOrderForNote._id)}
+                    >
+                      <TbTrash className="text-[16px]" />
+                    </Button>
+                  </Tooltip>
+                  <Tooltip
+                    content="New Note"
+                    className="!bg-opacity-60"
+                    placement="top"
+                    animate={{
+                      mount: { scale: 1, y: 0 },
+                      unmount: { scale: 0, y: 25 },
+                    }}
                   >
-                    <TbCirclePlus className="text-[18px]" />
-                    Create New
-                  </Button>
+                    <Button
+                      className="flex items-center gap-2 bg-blue-500 shadow-none hover:shadow-none"
+                      size="sm"
+                      variant="filled"
+                      onClick={() => setOpenNote(true) || setViewNote(false)}
+                    >
+                      <TbCirclePlus className="text-[16px]" />
+                    </Button>
+                  </Tooltip>
                 </div>
               </div>
             </div>
