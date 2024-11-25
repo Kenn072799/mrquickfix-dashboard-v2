@@ -27,6 +27,7 @@ const ContentManagement = () => {
   const [openAddService, setOpenAddService] = useState(false);
   const [imageService, setImageService] = useState(null);
   const [newService, setNewService] = useState({ serviceName: "" });
+  const [selectedJobType, setSelectedJobType] = useState("");
 
   useEffect(() => {
     document.title = "Mr. Quick Fix | Content Management";
@@ -122,6 +123,7 @@ const ContentManagement = () => {
 
     console.log("Adding Service with the following data:");
     console.log("Service Name:", newService.serviceName);
+    console.log("Selected Job Type:", selectedJobType);
     console.log("Service Image:", imageService);
 
     Swal.fire({
@@ -131,7 +133,6 @@ const ContentManagement = () => {
       confirmButtonText: "OK",
     }).then((result) => {
       if (result.isConfirmed) {
-        window.location.reload();
       }
     });
   };
@@ -317,11 +318,17 @@ const ContentManagement = () => {
                 }
               />
               {/* Choose Job Type to add the service */}
-              <Select label="Choose Job Type">
-                <Option>Repairs</Option>
-                <Option>Renovation</Option>
-                <Option>Preventive Maintenance Service (PMS)</Option>
-                <Option>Cleaning Services</Option>
+              <Select
+                label="Choose Job Type"
+                value={selectedJobType}
+                onChange={setSelectedJobType}
+              >
+                <Option value="Repairs">Repairs</Option>
+                <Option value="Renovation">Renovation</Option>
+                <Option value="Preventive Maintenance Service (PMS)">
+                  Preventive Maintenance Service (PMS)
+                </Option>
+                <Option value="Cleaning Services">Cleaning Services</Option>
               </Select>
               <label className="text-sm">Upload Image:</label>
               <div className="flex items-center gap-4">
