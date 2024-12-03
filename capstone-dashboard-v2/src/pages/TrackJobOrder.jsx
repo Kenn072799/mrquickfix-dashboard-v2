@@ -50,9 +50,9 @@ const TrackJobOrder = () => {
           Track Job Order
         </Title>
       </div>
-      <div className="flex max-w-[150px] pb-4">
+      <div className="inline-block pb-4">
         <Button onClick={() => openForm(!toggleAddJobOrderForm)}>
-          <TbPlus className="mr-2 text-[18px]" /> Add Job Order
+          <TbPlus className="mr-1 text-xl" /> Add Job Order
         </Button>
       </div>
 
@@ -61,9 +61,7 @@ const TrackJobOrder = () => {
         <MainTable setSelectedJobOrder={selectJobOrder} />
       </div>
 
-      <div className=""></div>
-
-      <div className="shadow-md mt-8 shadow-secondary-100">
+      <div className="mt-8 shadow-md shadow-secondary-100">
         <InquiryTable />
       </div>
 

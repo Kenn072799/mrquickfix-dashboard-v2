@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Title } from "../props/Title";
 import {
   Button,
@@ -8,69 +8,56 @@ import {
   Tooltip,
   Typography,
 } from "@material-tailwind/react";
-import Swal from "sweetalert2";
-import { useJobOrderData } from "../../data/JobOrderData";
 import {
   TbEye,
   TbCircleX,
-  TbCalendarSearch,
-  TbClockUp,
-  TbHomeSearch,
   TbFilePlus,
-  TbReportMoney,
   TbFlagCheck,
   TbX,
-  TbCalendarEvent,
-  TbCalendarBolt,
-  TbCalendarCheck,
   TbExclamationCircle,
-  TbCalendarPlus,
-  TbClock24,
   TbPlayerPlay,
   TbCircleCheck,
-  TbCalendarClock,
   TbChevronRight,
   TbChevronLeft,
   TbArchive,
   TbNote,
   TbCirclePlus,
   TbTrash,
+  TbSortAscending,
+  TbSortDescending,
 } from "react-icons/tb";
 import Relax from "../../assets/undraw_A_moment_to_relax_re_v5gv.png";
 import { useJobAlerts } from "../../data/useJobAlerts";
 import { useJobAlertProgress } from "../../data/useJobAlertProgress";
 import useCurrentTime from "../hooks/useCurrentTime";
+import useAlert from "../hooks/useAlert";
+import useHandleMainTable from "../hooks/useHandleMainTable";
+import Swal from "sweetalert2";
+import useCapitalize from "../hooks/useCapitalize";
 
 const MainTable = ({ setSelectedJobOrder }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesToShow, setEntriesToShow] = useState(10);
   const [statusFilter, setStatusFilter] = useState("All");
-  const {
-    fetchProjects,
-    projects,
-    updateJobOrder,
-    updateJobOrderNote,
-    alertJobOrder,
-  } = useJobOrderData();
   const [updatedProject, setUpdatedProject] = useState(null);
   const [openQuotationModal, setOpenQuotationModal] = useState(false);
-  const [buttonLoading, setButtonLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [quotationUploaded, setQuotationUploaded] = useState(false);
-  const [finishInspectionStatus, setFinishInspectionStatus] = useState({});
-  const [startProjectStatus, setStartProjectStatus] = useState({});
   const [openCancelModal, setOpenCancelModal] = useState(false);
   const [selectedJobOrderForCancel, setSelectedJobOrderForCancel] =
     useState(null);
-  const [cancelReason, setCancelReason] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const statusOrder = ["on process", "in progress", "completed", "cancelled"];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
   const [openNote, setOpenNote] = useState(false);
-  const [jobNote, setJobNote] = useState("");
   const [jobOrderForNote, setJobOrderForNote] = useState(null);
   const [viewNote, setViewNote] = useState(false);
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: "ascending",
+  });
+
+  const { capitalizeWords } = useCapitalize();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const { timeAgo } = useCurrentTime();
   const { alertInspectionTomorrow, alertInspectionToday, alertWaitingUpdate } =
     useJobAlerts(today);
@@ -86,241 +73,44 @@ const MainTable = ({ setSelectedJobOrder }) => {
     alertProjectExtendedFinishToday,
   } = useJobAlertProgress(today);
 
-  const throttledFetchProjects = useCallback(throttle(fetchProjects, 60000), [
-    fetchProjects,
-  ]);
+  const {
+    buttonLoading,
+    quotationUploaded,
+    finishInspectionStatus,
+    startProjectStatus,
+    cancelReason,
+    jobNote,
+    loading,
+    projects,
+    setCancelReason,
+    setJobNote,
+    handleFinishInspection,
+    handleStartProject,
+    handleQuotationModal,
+    handleCompleteProject,
+    handleFileChange,
+    handleArchiveProject,
+    handleCancelProject,
+    handleSubmitNote,
+    handleRemoveNote,
+  } = useHandleMainTable();
 
-  useEffect(() => {
-    const initializeData = async () => {
-      setLoading(true);
-      try {
-        await fetchProjects();
-        const initialStartProjectStatus = {};
-        projects.forEach((jobOrder) => {
-          if (jobOrder.jobNotificationAlert === "ongoing project") {
-            initialStartProjectStatus[jobOrder._id] = true;
-          }
-        });
-        setStartProjectStatus(initialStartProjectStatus);
-      } catch (error) {
-        console.error("Error fetching projects:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeData();
-
-    const intervalId = setInterval(throttledFetchProjects, 10000);
-
-    return () => clearInterval(intervalId);
-  }, [throttledFetchProjects]);
-
-  function throttle(func, limit) {
-    let lastFunc;
-    let lastRan;
-
-    return function (...args) {
-      const context = this;
-      if (!lastRan) {
-        func.apply(context, args);
-        lastRan = Date.now();
-      } else {
-        clearTimeout(lastFunc);
-        lastFunc = setTimeout(
-          () => {
-            if (Date.now() - lastRan >= limit) {
-              func.apply(context, args);
-              lastRan = Date.now();
-            }
-          },
-          limit - (Date.now() - lastRan),
-        );
-      }
-    };
-  }
-
-  const jobNotificationAlertProcess = [
-    {
-      message: "inspection tomorrow",
-      icon: TbCalendarSearch,
-      condition: (jobOrder) =>
-        jobOrder.jobStatus === "on process" &&
-        alertInspectionTomorrow(jobOrder),
-    },
-    {
-      message: "up for inspection",
-      icon: TbHomeSearch,
-      condition: (jobOrder) =>
-        jobOrder.jobStatus === "on process" && alertInspectionToday(jobOrder),
-    },
-    {
-      message: "waiting for update",
-      icon: TbClockUp,
-      condition: (jobOrder) =>
-        jobOrder.jobStatus === "on process" && alertWaitingUpdate(jobOrder),
-    },
-    {
-      message: "ready for quotation",
-      icon: TbReportMoney,
-      condition: (jobOrder) => finishInspectionStatus[jobOrder._id] === true,
-    },
-  ];
-
-  const jobNotificationAlertProgress = [
-    {
-      message: "Project starts tomorrow",
-      icon: TbClock24,
-      condition: (jobOrder) =>
-        jobOrder.jobStatus === "in progress" &&
-        alertProjectStartTomorrow(jobOrder),
-    },
-    {
-      message: "Project starts today",
-      icon: TbCalendarEvent,
-      condition: (jobOrder) =>
-        jobOrder.jobStatus === "in progress" &&
-        alertProjectStartToday(jobOrder),
-    },
-    {
-      message: "Waiting for update",
-      icon: TbClockUp,
-      condition: (jobOrder) =>
-        jobOrder.jobStatus === "in progress" &&
-        alertProjectStartInPast(jobOrder) &&
-        jobOrder.jobNotificationAlert !== "ongoing project",
-    },
-    {
-      message: "Project starts and finishes today",
-      icon: TbCalendarBolt,
-      condition: (jobOrder) =>
-        jobOrder.jobStatus === "in progress" &&
-        alertProjectStartAndFinishToday(jobOrder),
-    },
-    {
-      message: "Project finishes today",
-      icon: TbCalendarCheck,
-      condition: (jobOrder) =>
-        jobOrder.jobStatus === "in progress" &&
-        alertProjectFinishToday(jobOrder),
-    },
-    {
-      message: "Project is delayed",
-      icon: TbExclamationCircle,
-      condition: (jobOrder) =>
-        jobOrder.jobStatus === "in progress" && alertProjectDelayed(jobOrder),
-    },
-    {
-      message: "Project extended",
-      icon: TbCalendarPlus,
-      condition: (jobOrder) =>
-        jobOrder.jobStatus === "in progress" && alertProjectExtended(jobOrder),
-    },
-    {
-      message: "Extended project finishes today",
-      icon: TbCalendarCheck,
-      condition: (jobOrder) =>
-        jobOrder.jobStatus === "in progress" &&
-        alertProjectExtendedFinishToday(jobOrder),
-    },
-    {
-      message: "Ongoing project",
-      icon: TbCalendarClock,
-      condition: (jobOrder) =>
-        (jobOrder.jobStatus === "in progress" &&
-          startProjectStatus[jobOrder._id]) ||
-        jobOrder.jobNotificationAlert === "ongoing project",
-    },
-  ];
-
-  const handleFinishInspection = async (jobOrder) => {
-    try {
-      const result = await Swal.fire({
-        title: "Do you want to finish inspection?",
-        showCancelButton: true,
-        confirmButtonText: "Yes, Finish",
-        icon: "question",
-      });
-
-      if (result.isConfirmed) {
-        setFinishInspectionStatus((prevStatus) => ({
-          ...prevStatus,
-          jobNotificationAlert: "ready for quotation",
-          [jobOrder._id]: true,
-        }));
-
-        const updateResult = await alertJobOrder(jobOrder._id, {
-          jobNotificationAlert: "ready for quotation",
-        });
-
-        if (updateResult.success) {
-          Swal.fire(
-            "Inspection Finished",
-            "You can now add a quotation.",
-            "success",
-          );
-        } else {
-          console.error("Failed to update job order:", updateResult.message);
-          Swal.fire("Error", "Failed to update job order.", "error");
-          setFinishInspectionStatus((prevStatus) => ({
-            ...prevStatus,
-            jobNotificationAlert: "",
-            [jobOrder._id]: false,
-          }));
-        }
-      }
-    } catch (error) {
-      console.error("Error updating job order:", error);
-      Swal.fire("Error", "Failed to update job order.", "error");
-      setFinishInspectionStatus((prevStatus) => ({
-        ...prevStatus,
-        jobNotificationAlert: "",
-        [jobOrder._id]: false,
-      }));
-    }
-  };
-
-  const handleStartProject = async (jobOrder) => {
-    try {
-      const result = await Swal.fire({
-        title: "Do you want to start this project?",
-        showCancelButton: true,
-        confirmButtonText: "Yes, Start",
-        icon: "question",
-      });
-
-      if (result.isConfirmed) {
-        setStartProjectStatus((prevStatus) => ({
-          ...prevStatus,
-          [jobOrder._id]: true,
-        }));
-
-        const updateResult = await alertJobOrder(jobOrder._id, {
-          jobNotificationAlert: "ongoing project",
-        });
-
-        if (updateResult.success) {
-          Swal.fire(
-            "Project Started",
-            "Stay up to date with project alert.",
-            "success",
-          );
-        } else {
-          setStartProjectStatus((prevStatus) => ({
-            ...prevStatus,
-            [jobOrder._id]: false,
-          }));
-          Swal.fire("Error", "Failed to update job order.", "error");
-        }
-      }
-    } catch (error) {
-      setStartProjectStatus((prevStatus) => ({
-        ...prevStatus,
-        [jobOrder._id]: false,
-      }));
-      Swal.fire("Error", "Failed to update job order.", "error");
-    }
-  };
+  const { jobNotificationAlertProcess, jobNotificationAlertProgress } =
+    useAlert(
+      alertInspectionTomorrow,
+      alertInspectionToday,
+      alertWaitingUpdate,
+      finishInspectionStatus,
+      alertProjectStartTomorrow,
+      alertProjectStartToday,
+      alertProjectStartInPast,
+      alertProjectStartAndFinishToday,
+      alertProjectFinishToday,
+      alertProjectDelayed,
+      alertProjectExtended,
+      alertProjectExtendedFinishToday,
+      startProjectStatus,
+    );
 
   const statusColors = {
     "in progress": "orange",
@@ -328,6 +118,8 @@ const MainTable = ({ setSelectedJobOrder }) => {
     cancelled: "red",
     "on process": "blue",
   };
+
+  const statusOrder = ["on process", "in progress", "completed", "cancelled"];
 
   const handleStatusFilterChange = (e) => {
     setStatusFilter(e.target.value);
@@ -348,9 +140,51 @@ const MainTable = ({ setSelectedJobOrder }) => {
     return isNotArchived && matchesStatus && matchesSearchTerm;
   });
 
-  const sortedData = filteredData.sort((a, b) => {
-    return statusOrder.indexOf(a.jobStatus) - statusOrder.indexOf(b.jobStatus);
+  const requestSort = (key) => {
+    let direction = "ascending";
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedData = [...filteredData].sort((a, b) => {
+    if (!sortConfig.key) {
+      return (
+        statusOrder.indexOf(a.jobStatus) - statusOrder.indexOf(b.jobStatus)
+      );
+    }
+
+    const aValue =
+      sortConfig.key === "name"
+        ? `${a.clientFirstName} ${a.clientLastName}`
+        : a[sortConfig.key];
+    const bValue =
+      sortConfig.key === "name"
+        ? `${b.clientFirstName} ${b.clientLastName}`
+        : b[sortConfig.key];
+
+    if (aValue < bValue) {
+      return sortConfig.direction === "ascending" ? -1 : 1;
+    }
+    if (aValue > bValue) {
+      return sortConfig.direction === "ascending" ? 1 : -1;
+    }
+    return 0;
   });
+
+  const getSortDirection = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === "ascending" ? (
+        <TbSortAscending className="text-lg" />
+      ) : (
+        <TbSortDescending className="text-lg" />
+      );
+    }
+    return (
+      <TbSortAscending className="text-lg opacity-0 group-hover:opacity-50" />
+    );
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -361,112 +195,6 @@ const MainTable = ({ setSelectedJobOrder }) => {
     (currentPage - 1) * entriesToShow,
     currentPage * entriesToShow,
   );
-
-  const handleQuotationModal = async () => {
-    const result = await Swal.fire({
-      title: "Do you want to save the changes?",
-      showCancelButton: true,
-      confirmButtonText: "Save",
-    });
-
-    if (result.isConfirmed) {
-      try {
-        setButtonLoading(true);
-
-        const userID = localStorage.getItem("userID");
-
-        if (!userID) {
-          setButtonLoading(false);
-          Swal.fire(
-            "Error",
-            "User ID is required to update the job order.",
-            "error",
-          );
-          return;
-        }
-
-        const updatedJob = {
-          ...updatedProject,
-          jobStatus: "in progress",
-          updatedBy: userID,
-        };
-
-        const { success, message } = await updateJobOrder(
-          updatedProject._id,
-          updatedJob,
-        );
-
-        setButtonLoading(false);
-
-        if (!success) {
-          Swal.fire("Oops...", message, "error");
-        } else {
-          Swal.fire("Saved!", "Job order updated successfully!", "success");
-          setOpenQuotationModal(false);
-        }
-      } catch (error) {
-        setButtonLoading(false);
-        Swal.fire("Error", "Failed to update job order.", "error");
-      }
-    }
-  };
-
-  const handleCompleteProject = async (jobOrder) => {
-    try {
-      const result = await Swal.fire({
-        title: "Do you want to mark this project as completed?",
-        showCancelButton: true,
-        confirmButtonText: "Yes, Complete",
-        icon: "question",
-      });
-
-      if (result.isConfirmed) {
-        const userID = localStorage.getItem("userID");
-
-        if (!userID) {
-          Swal.fire(
-            "Error",
-            "User ID is required to update the job order.",
-            "error",
-          );
-          return;
-        }
-
-        const updatedJob = {
-          ...jobOrder,
-          jobStatus: "completed",
-          updatedBy: userID,
-        };
-
-        const { success, message } = await updateJobOrder(
-          jobOrder._id,
-          updatedJob,
-        );
-
-        if (!success) {
-          Swal.fire("Oops...", message, "error");
-        } else {
-          Swal.fire(
-            "Completed!",
-            "Job order marked as completed successfully!",
-            "success",
-          );
-        }
-      }
-    } catch (error) {
-      Swal.fire("Error", "Failed to update job order.", "error");
-      console.error("Error updating job order:", error);
-    }
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    setQuotationUploaded(!!file);
-    setUpdatedProject((prev) => ({
-      ...prev,
-      jobQuotation: file ? file.name : "",
-    }));
-  };
 
   const handleProceed = () => {
     if (
@@ -481,120 +209,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
       });
       return;
     }
-    handleQuotationModal();
-  };
-
-  const handleArchiveProject = async (jobOrder) => {
-    try {
-      const result = await Swal.fire({
-        title: "Do you want to archive this job order?",
-        text: "This action will move the job order to the report list.",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Yes, Archive",
-        cancelButtonText: "No, Keep",
-      });
-
-      if (result.isConfirmed) {
-        const userID = localStorage.getItem("userID");
-
-        if (!userID) {
-          Swal.fire(
-            "Error",
-            "User ID is required to archive the job order.",
-            "error",
-          );
-          return;
-        }
-
-        const updatedJob = {
-          ...jobOrder,
-          jobStatus: "archived",
-          originalStatus: jobOrder.jobStatus,
-          updatedBy: userID,
-        };
-
-        const { success, message } = await updateJobOrder(
-          jobOrder._id,
-          updatedJob,
-        );
-
-        if (!success) {
-          Swal.fire("Oops...", message, "error");
-        } else {
-          Swal.fire("Archived!", "Job order archived successfully!", "success");
-        }
-      }
-    } catch (error) {
-      Swal.fire("Error", "Failed to archive job order.", "error");
-      console.error("Error archiving job order:", error);
-    }
-  };
-
-  const handleCancelProject = async () => {
-    if (!cancelReason) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Please provide a reason for cancellation.",
-      });
-      return;
-    }
-
-    if (!selectedJobOrderForCancel || !selectedJobOrderForCancel.jobStatus) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No previous status available for cancellation.",
-      });
-      return;
-    }
-
-    const result = await Swal.fire({
-      title: "Do you want to cancel this project?",
-      showCancelButton: true,
-      confirmButtonText: "Yes, Cancel",
-      icon: "question",
-    });
-
-    if (result.isConfirmed) {
-      try {
-        setButtonLoading(true);
-
-        const updatedJob = {
-          ...selectedJobOrderForCancel,
-          jobStatus: "cancelled",
-          jobPreviousStatus: selectedJobOrderForCancel.jobStatus,
-          updatedBy: localStorage.getItem("userID"),
-          jobCancellationReason: cancelReason,
-        };
-
-        setCancelReason("");
-
-        const { success, message } = await updateJobOrder(
-          selectedJobOrderForCancel._id,
-          updatedJob,
-        );
-
-        setButtonLoading(false);
-
-        if (!success) {
-          Swal.fire("Oops...", message, "error");
-        } else {
-          Swal.fire(
-            "Cancelled!",
-            "Job order cancelled successfully!",
-            "success",
-          );
-          setOpenCancelModal(false);
-        }
-      } catch (error) {
-        setButtonLoading(false);
-        Swal.fire("Error", "Failed to cancel job order.", "error");
-
-        console.error("Error canceling job order:", error);
-      }
-    }
+    handleQuotationModal(updatedProject, setOpenQuotationModal);
   };
 
   const handleNoteModal = (jobOrder) => {
@@ -602,98 +217,9 @@ const MainTable = ({ setSelectedJobOrder }) => {
     setOpenNote(true);
   };
 
-  const handleSubmitNote = async (jobOrderId) => {
-    if (!jobNote) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Please write a note.",
-      });
-      return;
-    }
-
-    try {
-      const result = await Swal.fire({
-        title: "Do you want to add this note?",
-        showCancelButton: true,
-        confirmButtonText: "Yes, Add",
-        icon: "question",
-      });
-
-      if (result.isConfirmed) {
-        const userID = localStorage.getItem("userID");
-
-        if (!userID) {
-          Swal.fire(
-            "Error",
-            "User ID is required to add a note to the job order.",
-            "error",
-          );
-          return;
-        }
-
-        const noteType = jobOrderForNote?.createdNote
-          ? "updatedNote"
-          : "createdNote";
-
-        const { success, message } = await updateJobOrderNote({
-          jobOrderId,
-          noteType,
-          noteContent: jobNote,
-          userID,
-        });
-
-        if (!success) {
-          Swal.fire("Oops...", message, "error");
-        } else {
-          setOpenNote(false);
-          setJobNote("");
-          Swal.fire("Added!", "Note added successfully!", "success");
-        }
-      }
-    } catch (error) {
-      Swal.fire("Error", "Failed to add note.", "error");
-      console.error("Error adding note:", error);
-    }
-  };
-
   const handleViewNote = (jobOrder) => {
     setJobOrderForNote(jobOrder);
     setViewNote(true);
-  };
-
-  const handleRemoveNote = async (jobOrderId) => {
-    try {
-      const result = await Swal.fire({
-        title: "Are you sure you want to remove this note?",
-        showCancelButton: true,
-        confirmButtonText: "Yes, Remove",
-        icon: "warning",
-      });
-
-      if (result.isConfirmed) {
-        const noteType = jobOrderForNote?.createdNote
-          ? "createdNote"
-          : "updatedNote";
-
-        const { success, message } = await updateJobOrderNote({
-          jobOrderId,
-          noteType,
-          noteContent: "",
-        });
-
-        if (!success) {
-          Swal.fire("Oops...", message, "error");
-        } else {
-          Swal.fire("Removed!", "Note removed successfully!", "success");
-          setViewNote(false);
-          setJobNote("");
-        }
-      }
-    } catch (error) {
-      Swal.fire("Error", "Failed to remove note.", "error");
-      console.error("Error deleting note:", error);
-    }
   };
 
   return (
@@ -704,7 +230,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
         </Title>
       </div>
       <div className="p-4">
-        <div className="flex justify-between pb-4">
+        <div className="flex flex-col gap-4 pb-4 md:flex-row md:justify-between">
           {/* search bar */}
           <div className="flex items-center">
             <Title variant="secondarySemibold" size="sm">
@@ -718,7 +244,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
             />
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 pb-4 md:flex-row md:justify-between">
             {/* entries */}
             <div className="flex items-center">
               <Title variant="secondarySemibold" size="sm">
@@ -727,7 +253,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
               <select
                 name="entries"
                 id="entries"
-                className="mx-2 rounded-sm border border-secondary-200 px-3 py-1 text-base outline-none ring-secondary-600 focus:ring-2"
+                className="mx-2 rounded-sm border border-secondary-200 px-3 py-1 text-sm outline-none ring-secondary-600 focus:ring-2 md:text-base"
                 value={entriesToShow}
                 onChange={(e) => setEntriesToShow(Number(e.target.value))}
               >
@@ -746,7 +272,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
               <select
                 name="statusFilter"
                 id="statusFilter"
-                className="mx-2 rounded-sm border border-secondary-200 px-3 py-1 text-base outline-none ring-secondary-600 focus:ring-2"
+                className="mx-2 rounded-sm border border-secondary-200 px-3 py-1 text-sm outline-none ring-secondary-600 focus:ring-2 md:text-base"
                 value={statusFilter}
                 onChange={handleStatusFilterChange}
               >
@@ -761,58 +287,98 @@ const MainTable = ({ setSelectedJobOrder }) => {
         </div>
 
         {/* table */}
-        <div className="overflow-x-auto">
-          <table className="table border-b border-secondary-200 bg-white text-base">
-            <thead>
-              <tr className="border-b-2 border-secondary-200 text-base text-primary-500">
-                <th className="w-10">No</th>
-                <th className="min-w-[100px]">Project ID</th>
-                <th className="min-w-[150px]">Name</th>
-                <th className="min-w-[200px]">Job Type</th>
-                <th className="min-w-[130px]">Status</th>
-                <th className="w-full">Alert</th>
-                <th className="min-w-[100px]">Note</th>
-                <th className="min-w-[150px]">Action</th>
+        <div className="overflow-auto bg-white">
+          <table className="min-w-full divide-y-2 divide-secondary-100 border-b border-secondary-100 text-sm">
+            <thead className="text-left">
+              <tr className="border-b-2 border-secondary-200 text-sm text-primary-500">
+                <th className="px-4 py-2">No</th>
+                <th
+                  className={`group relative cursor-pointer whitespace-nowrap px-4 py-2 hover:bg-secondary-50 ${
+                    sortConfig.key === "projectID" ? "bg-secondary-50" : ""
+                  }`}
+                  onClick={() => requestSort("projectID")}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Project ID</span>
+                    {getSortDirection("projectID")}
+                  </div>
+                </th>
+                <th
+                  className={`group relative cursor-pointer px-4 py-2 hover:bg-secondary-50 ${
+                    sortConfig.key === "name" ? "bg-secondary-50" : ""
+                  }`}
+                  onClick={() => requestSort("name")}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Name</span>
+                    {getSortDirection("name")}
+                  </div>
+                </th>
+                <th
+                  className={`group relative cursor-pointer whitespace-nowrap px-4 py-2 hover:bg-secondary-50 ${
+                    sortConfig.key === "jobType" ? "bg-secondary-50" : ""
+                  }`}
+                  onClick={() => requestSort("jobType")}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Job Type</span>
+                    {getSortDirection("jobType")}
+                  </div>
+                </th>
+                <th
+                  className={`group relative cursor-pointer px-4 py-2 hover:bg-secondary-50 ${
+                    sortConfig.key === "jobStatus" ? "bg-secondary-50" : ""
+                  }`}
+                  onClick={() => requestSort("jobStatus")}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Status</span>
+                    {getSortDirection("jobStatus")}
+                  </div>
+                </th>
+                <th className="px-4 py-2">Alert</th>
+                <th className="px-4 py-2 text-right">Note</th>
+                <th className="px-4 py-2 text-right">Action</th>
               </tr>
             </thead>
             {loading ? (
               <tbody>
                 <tr>
                   <td colSpan="8" className="h-[400px] text-center">
-                    <span className="loading loading-bars loading-lg"></span>
+                    <span className="loading loading-bars loading-lg bg-primary-500"></span>
                   </td>
                 </tr>
               </tbody>
             ) : paginatedData.length > 0 ? (
-              <tbody>
+              <tbody className="divide-y divide-secondary-100">
                 {paginatedData.map((jobOrder, index) => (
                   <tr
                     key={jobOrder.id || index}
-                    className="group relative text-sm uppercase hover:bg-secondary-50"
+                    className="bg-white text-sm capitalize hover:bg-secondary-50"
                   >
-                    <td>{(currentPage - 1) * entriesToShow + (index + 1)}</td>
-                    <td>{jobOrder.projectID}</td>
-                    <td>
-                      {jobOrder.clientFirstName} {jobOrder.clientLastName}
+                    <td className="w-[10px] px-4 py-2">
+                      {(currentPage - 1) * entriesToShow + (index + 1)}
                     </td>
-                    <td>{jobOrder.jobType || "Not Specified Yet"}</td>
-                    <td>
-                      <div className="flex font-semibold">
+                    <td className="w-[130px] overflow-hidden text-ellipsis whitespace-nowrap px-4 py-2">
+                      {jobOrder.projectID}
+                    </td>
+                    <td className="w-[150px] overflow-hidden text-ellipsis whitespace-nowrap px-4 py-2">
+                      {capitalizeWords(jobOrder.clientFirstName)}{" "}
+                      {capitalizeWords(jobOrder.clientLastName)}
+                    </td>
+                    <td className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap px-4 py-2">
+                      {jobOrder.jobType}
+                    </td>
+                    <td className="w-[150px] overflow-hidden text-ellipsis whitespace-nowrap px-4 py-2">
+                      <div className="w-max">
                         <Chip
                           variant="ghost"
                           color={statusColors[jobOrder.jobStatus]}
-                          value={
-                            <Typography
-                              variant="small"
-                              className="font-bold capitalize leading-none"
-                            >
-                              {jobOrder.jobStatus}
-                            </Typography>
-                          }
+                          value={jobOrder.jobStatus}
                         />
                       </div>
                     </td>
-                    <td>
+                    <td className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap px-4 py-2">
                       {/* Job Status Alerts */}
                       {jobOrder.jobStatus === "on process" ? (
                         jobNotificationAlertProcess
@@ -877,7 +443,7 @@ const MainTable = ({ setSelectedJobOrder }) => {
                         </div>
                       ) : null}
                     </td>
-                    <td>
+                    <td className="group max-w-full px-4 py-2 text-right">
                       {/* if the note have a data then show the note otherwise show the add button */}
                       {jobOrder.jobNote ? (
                         <Tooltip
@@ -916,108 +482,12 @@ const MainTable = ({ setSelectedJobOrder }) => {
                         </Tooltip>
                       )}
                     </td>
-                    <td>
-                      <div className="flex gap-3">
-                        {/* Actions based on job status */}
-                        {jobOrder.jobStatus === "completed" ||
-                        jobOrder.jobStatus === "cancelled" ? (
-                          <Tooltip
-                            content="Archive"
-                            className="!bg-opacity-60"
-                            placement="left"
-                            animate={{
-                              mount: { scale: 1, y: 0 },
-                              unmount: { scale: 0, y: 25 },
-                            }}
-                          >
-                            <Button
-                              className="!bg-gray-500 !p-1"
-                              onClick={() => handleArchiveProject(jobOrder)}
-                            >
-                              <TbArchive className="text-[20px]" />
-                            </Button>
-                          </Tooltip>
-                        ) : null}
-                        {jobOrder.jobStatus === "on process" ? (
-                          jobOrder.jobNotificationAlert ===
-                          "ready for quotation" ? (
-                            <Tooltip
-                              content="Add Quotation"
-                              className="!bg-opacity-60"
-                              placement="left"
-                              animate={{
-                                mount: { scale: 1, y: 0 },
-                                unmount: { scale: 0, y: 25 },
-                              }}
-                            >
-                              <Button
-                                className="!bg-green-500 !p-1"
-                                onClick={() => {
-                                  setUpdatedProject(jobOrder);
-                                  setOpenQuotationModal(true);
-                                }}
-                              >
-                                <TbFilePlus className="text-[20px]" />
-                              </Button>
-                            </Tooltip>
-                          ) : (
-                            <Tooltip
-                              content="Finish Inspection"
-                              className="!bg-opacity-60"
-                              placement="left"
-                              animate={{
-                                mount: { scale: 1, y: 0 },
-                                unmount: { scale: 0, y: 25 },
-                              }}
-                            >
-                              <Button
-                                className="!bg-red-500 !p-1"
-                                onClick={() => handleFinishInspection(jobOrder)}
-                              >
-                                <TbFlagCheck className="text-[20px]" />
-                              </Button>
-                            </Tooltip>
-                          )
-                        ) : jobOrder.jobStatus === "in progress" ? (
-                          jobOrder.jobNotificationAlert ===
-                          "ongoing project" ? (
-                            <Tooltip
-                              content="Complete Project"
-                              className="!bg-opacity-60"
-                              placement="left"
-                              animate={{
-                                mount: { scale: 1, y: 0 },
-                                unmount: { scale: 0, y: 25 },
-                              }}
-                            >
-                              <Button
-                                className="!bg-green-500 !p-1"
-                                onClick={() => handleCompleteProject(jobOrder)}
-                              >
-                                <TbCircleCheck className="text-[20px]" />
-                              </Button>
-                            </Tooltip>
-                          ) : (
-                            <Tooltip
-                              content="Start Project"
-                              className="!bg-opacity-60"
-                              placement="left"
-                              animate={{
-                                mount: { scale: 1, y: 0 },
-                                unmount: { scale: 0, y: 25 },
-                              }}
-                            >
-                              <Button
-                                className="!bg-orange-500 !p-1"
-                                onClick={() => handleStartProject(jobOrder)}
-                              >
-                                <TbPlayerPlay className="text-[20px]" />
-                              </Button>
-                            </Tooltip>
-                          )
-                        ) : null}
+                    <td className="flex justify-end gap-3 px-4 py-2 text-right">
+                      {/* Actions based on job status */}
+                      {jobOrder.jobStatus === "completed" ||
+                      jobOrder.jobStatus === "cancelled" ? (
                         <Tooltip
-                          content="View Details"
+                          content="Archive"
                           className="!bg-opacity-60"
                           placement="left"
                           animate={{
@@ -1026,16 +496,38 @@ const MainTable = ({ setSelectedJobOrder }) => {
                           }}
                         >
                           <Button
-                            className="!bg-blue-500 !p-1"
-                            onClick={() => setSelectedJobOrder(jobOrder)}
+                            className="!bg-gray-500 !p-1"
+                            onClick={() => handleArchiveProject(jobOrder)}
                           >
-                            <TbEye className="text-[20px]" />
+                            <TbArchive className="text-[20px]" />
                           </Button>
                         </Tooltip>
-                        {jobOrder.jobStatus === "cancelled" ||
-                        jobOrder.jobStatus === "completed" ? null : (
+                      ) : null}
+                      {jobOrder.jobStatus === "on process" ? (
+                        jobOrder.jobNotificationAlert ===
+                        "ready for quotation" ? (
                           <Tooltip
-                            content="Cancel Project"
+                            content="Add Quotation"
+                            className="!bg-opacity-60"
+                            placement="left"
+                            animate={{
+                              mount: { scale: 1, y: 0 },
+                              unmount: { scale: 0, y: 25 },
+                            }}
+                          >
+                            <Button
+                              className="!bg-green-500 !p-1"
+                              onClick={() => {
+                                setUpdatedProject(jobOrder);
+                                setOpenQuotationModal(true);
+                              }}
+                            >
+                              <TbFilePlus className="text-[20px]" />
+                            </Button>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip
+                            content="Finish Inspection"
                             className="!bg-opacity-60"
                             placement="left"
                             animate={{
@@ -1045,16 +537,87 @@ const MainTable = ({ setSelectedJobOrder }) => {
                           >
                             <Button
                               className="!bg-red-500 !p-1"
-                              onClick={() => {
-                                setSelectedJobOrderForCancel(jobOrder);
-                                setOpenCancelModal(true);
-                              }}
+                              onClick={() => handleFinishInspection(jobOrder)}
                             >
-                              <TbCircleX className="text-[20px]" />
+                              <TbFlagCheck className="text-[20px]" />
                             </Button>
                           </Tooltip>
-                        )}
-                      </div>
+                        )
+                      ) : jobOrder.jobStatus === "in progress" ? (
+                        jobOrder.jobNotificationAlert === "ongoing project" ? (
+                          <Tooltip
+                            content="Complete Project"
+                            className="!bg-opacity-60"
+                            placement="left"
+                            animate={{
+                              mount: { scale: 1, y: 0 },
+                              unmount: { scale: 0, y: 25 },
+                            }}
+                          >
+                            <Button
+                              className="!bg-green-500 !p-1"
+                              onClick={() => handleCompleteProject(jobOrder)}
+                            >
+                              <TbCircleCheck className="text-[20px]" />
+                            </Button>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip
+                            content="Start Project"
+                            className="!bg-opacity-60"
+                            placement="left"
+                            animate={{
+                              mount: { scale: 1, y: 0 },
+                              unmount: { scale: 0, y: 25 },
+                            }}
+                          >
+                            <Button
+                              className="!bg-orange-500 !p-1"
+                              onClick={() => handleStartProject(jobOrder)}
+                            >
+                              <TbPlayerPlay className="text-[20px]" />
+                            </Button>
+                          </Tooltip>
+                        )
+                      ) : null}
+                      <Tooltip
+                        content="View Details"
+                        className="!bg-opacity-60"
+                        placement="left"
+                        animate={{
+                          mount: { scale: 1, y: 0 },
+                          unmount: { scale: 0, y: 25 },
+                        }}
+                      >
+                        <Button
+                          className="!bg-blue-500 !p-1"
+                          onClick={() => setSelectedJobOrder(jobOrder)}
+                        >
+                          <TbEye className="text-[20px]" />
+                        </Button>
+                      </Tooltip>
+                      {jobOrder.jobStatus === "cancelled" ||
+                      jobOrder.jobStatus === "completed" ? null : (
+                        <Tooltip
+                          content="Cancel Project"
+                          className="!bg-opacity-60"
+                          placement="left"
+                          animate={{
+                            mount: { scale: 1, y: 0 },
+                            unmount: { scale: 0, y: 25 },
+                          }}
+                        >
+                          <Button
+                            className="!bg-red-500 !p-1"
+                            onClick={() => {
+                              setSelectedJobOrderForCancel(jobOrder);
+                              setOpenCancelModal(true);
+                            }}
+                          >
+                            <TbCircleX className="text-[20px]" />
+                          </Button>
+                        </Tooltip>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -1103,9 +666,9 @@ const MainTable = ({ setSelectedJobOrder }) => {
       {/* Quotation Modal */}
       {openQuotationModal && (
         <>
-          <div className="fixed inset-0 z-[60] flex items-center justify-center rounded-md bg-black/20">
-            <div className="animate-fade-down animate-duration-[400ms] animate-ease-out">
-              <div className="max-w-[500px]">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center rounded-md bg-black/20 px-4">
+            <div className="w-full animate-fade-down animate-duration-[400ms] animate-ease-out">
+              <div className="mx-auto w-full max-w-[500px]">
                 <div className="flex items-center justify-between rounded-t-md border border-b-0 border-secondary-300 bg-secondary-100 px-4 py-2">
                   <Title>Add Quotation</Title>
                   <div
@@ -1126,10 +689,10 @@ const MainTable = ({ setSelectedJobOrder }) => {
                     type="file"
                     label="Upload Quotation"
                     className="!py-2"
-                    onChange={handleFileChange}
+                    onChange={(e) => handleFileChange(e, setUpdatedProject)}
                   />
                   {/* Start and End Date */}
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <Input
                       label="Start Date"
                       type="date"
@@ -1172,9 +735,9 @@ const MainTable = ({ setSelectedJobOrder }) => {
       {/* Cancel Modal */}
       {openCancelModal && selectedJobOrderForCancel && (
         <>
-          <div className="fixed inset-0 z-[60] flex items-center justify-center rounded-md bg-black/20">
-            <div className="animate-fade-down animate-duration-[400ms] animate-ease-out">
-              <div className="w-[400px] max-w-[500px]">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center rounded-md bg-black/20 px-4">
+            <div className="w-full animate-fade-down animate-duration-[400ms] animate-ease-out">
+              <div className="mx-auto w-full max-w-[500px]">
                 <div className="flex items-center justify-between rounded-t-md border border-b-0 border-secondary-300 bg-secondary-100 px-4 py-2">
                   <Title>Cancel Project</Title>
                   <div
@@ -1215,12 +778,17 @@ const MainTable = ({ setSelectedJobOrder }) => {
                     onChange={(e) => setCancelReason(e.target.value)}
                   />
                   <Button
-                    onClick={handleCancelProject}
+                    onClick={() =>
+                      handleCancelProject(
+                        selectedJobOrderForCancel,
+                        setOpenCancelModal,
+                      )
+                    }
                     disabled={buttonLoading}
                     className="!bg-red-500"
                   >
                     {buttonLoading ? (
-                      <span className="loading loading-dots loading-md"></span>
+                      <span className="loading loading-dots loading-sm h-1 py-2"></span>
                     ) : (
                       <>Cancel Project</>
                     )}
@@ -1233,9 +801,9 @@ const MainTable = ({ setSelectedJobOrder }) => {
       )}
 
       {openNote && jobOrderForNote && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center rounded-md bg-black/20">
-          <div className="animate-fade-down animate-duration-[400ms] animate-ease-out">
-            <div className="w-[400px] max-w-[500px]">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center rounded-md bg-black/20 px-4">
+          <div className="w-full animate-fade-down animate-duration-[400ms] animate-ease-out">
+            <div className="mx-auto w-full max-w-[500px]">
               <div className="flex items-center justify-between rounded-t-md border border-b-0 border-secondary-300 bg-secondary-100 px-4 py-2">
                 <Title>Create a Note</Title>
                 <div
@@ -1269,7 +837,13 @@ const MainTable = ({ setSelectedJobOrder }) => {
                   </div>
                   <div className="whitespace-nowrap">
                     <Button
-                      onClick={() => handleSubmitNote(jobOrderForNote._id)}
+                      onClick={() =>
+                        handleSubmitNote(
+                          jobOrderForNote._id,
+                          jobOrderForNote,
+                          setOpenNote,
+                        )
+                      }
                       className="!bg-gray-300 text-black shadow-none hover:shadow-none"
                     >
                       Add Note
@@ -1283,9 +857,9 @@ const MainTable = ({ setSelectedJobOrder }) => {
       )}
 
       {viewNote && jobOrderForNote && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center rounded-md bg-black/20">
-          <div className="animate-fade-down animate-duration-[400ms] animate-ease-out">
-            <div className="w-[400px] max-w-[500px]">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center rounded-md bg-black/20 px-4">
+          <div className="w-full animate-fade-down animate-duration-[400ms] animate-ease-out">
+            <div className="mx-auto w-full max-w-[500px]">
               <div className="flex items-center justify-between rounded-t-md border border-b-0 border-secondary-300 bg-secondary-100 px-4 py-2">
                 <Title>Note</Title>
                 <div
@@ -1298,38 +872,37 @@ const MainTable = ({ setSelectedJobOrder }) => {
                 </div>
               </div>
               <div className="flex flex-col gap-2 rounded-b-md border border-secondary-300 bg-white p-4">
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
                   {jobOrderForNote.jobNote && (
-                    <div className="flex flex-col gap-5 rounded-md border border-secondary-300 bg-secondary-50 p-2">
+                    <div className="flex flex-col gap-5 rounded-sm border border-secondary-300 bg-secondary-50 p-2">
                       <div className="flex items-center gap-2">
                         <span>{jobOrderForNote.jobNote}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex flex-col text-secondary-400">
-                          <span className="text-xs font-bold">
-                            {jobOrderForNote.updatedNote ? (
-                              <>
-                                {jobOrderForNote.updatedNote.firstName}{" "}
-                                {jobOrderForNote.updatedNote.lastName}
-                              </>
-                            ) : (
-                              <>
-                                {jobOrderForNote.createdNote.firstName}{" "}
-                                {jobOrderForNote.createdNote.lastName}
-                              </>
-                            )}
-                          </span>
-                          <span className="text-xs">
-                            {jobOrderForNote.updatedNote ? (
-                              <>{timeAgo(jobOrderForNote.updatedNoteDate)}</>
-                            ) : (
-                              <>{timeAgo(jobOrderForNote.createdNoteDate)}</>
-                            )}
-                          </span>
-                        </div>
-                      </div>
                     </div>
                   )}
+                  <div className="flex items-center gap-1 text-secondary-400">
+                    <span className="text-xs">
+                      {jobOrderForNote.updatedNote ? (
+                        <>
+                          {jobOrderForNote.updatedNote.firstName}{" "}
+                          {jobOrderForNote.updatedNote.lastName}
+                        </>
+                      ) : (
+                        <>
+                          {jobOrderForNote.createdNote.firstName}{" "}
+                          {jobOrderForNote.createdNote.lastName}
+                        </>
+                      )}
+                    </span>
+                    <span className="text-xs">
+                      •{" "}
+                      {jobOrderForNote.updatedNote ? (
+                        <>{timeAgo(jobOrderForNote.updatedNoteDate)}</>
+                      ) : (
+                        <>{timeAgo(jobOrderForNote.createdNoteDate)}</>
+                      )}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex justify-end gap-2">
                   <Tooltip
@@ -1345,7 +918,13 @@ const MainTable = ({ setSelectedJobOrder }) => {
                       className="flex items-center gap-2 bg-red-500 shadow-none hover:shadow-none"
                       size="sm"
                       variant="filled"
-                      onClick={() => handleRemoveNote(jobOrderForNote._id)}
+                      onClick={() =>
+                        handleRemoveNote(
+                          jobOrderForNote._id,
+                          jobOrderForNote,
+                          setViewNote,
+                        )
+                      }
                     >
                       <TbTrash className="text-[16px]" />
                     </Button>

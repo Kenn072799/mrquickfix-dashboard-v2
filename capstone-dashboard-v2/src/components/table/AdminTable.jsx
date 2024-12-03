@@ -2,16 +2,124 @@ import React, { useEffect, useState } from "react";
 import { Title } from "../props/Title";
 import dayjs from "dayjs";
 import { useAdminData } from "../../data/AdminData";
-import {
-  Button,
-  Chip,
-  Input,
-  Tooltip,
-  Typography,
-} from "@material-tailwind/react";
+import { Button, Chip, Input, Tooltip } from "@material-tailwind/react";
 import { TbEye, TbTrash, TbUserCheck, TbUserOff, TbX } from "react-icons/tb";
 import DefaultImage from "../../assets/default.webp";
 import Swal from "sweetalert2";
+
+const formatDate = (date) =>
+  date ? dayjs(date).format("MMM D - h:mm:s A") : "-";
+
+const AdminActions = ({
+  admin,
+  onView,
+  onActivate,
+  onDeactivate,
+  onDelete,
+}) => {
+  return (
+    <td className="flex justify-end gap-3 px-4 py-2 text-right">
+      <Tooltip
+        content="View Account"
+        className="!bg-opacity-60"
+        placement="left"
+      >
+        <Button className="!bg-blue-500 !p-1" onClick={() => onView(admin)}>
+          <TbEye className="text-[20px]" />
+        </Button>
+      </Tooltip>
+
+      {admin.adminStatus === "active" ? (
+        <Tooltip
+          content="Deactivate Account"
+          className="!bg-opacity-60"
+          placement="left"
+        >
+          <Button
+            className="!bg-neutral-500 !p-1"
+            onClick={() => onDeactivate(admin._id)}
+          >
+            <TbUserOff className="text-[20px]" />
+          </Button>
+        </Tooltip>
+      ) : (
+        <Tooltip
+          content="Activate Account"
+          className="!bg-opacity-60"
+          placement="left"
+        >
+          <Button
+            className="!bg-green-500 !p-1"
+            onClick={() => onActivate(admin._id)}
+          >
+            <TbUserCheck className="text-[20px]" />
+          </Button>
+        </Tooltip>
+      )}
+
+      <Tooltip
+        content="Delete Account"
+        className="!bg-opacity-60"
+        placement="left"
+      >
+        <Button
+          className="!bg-red-500 !p-1"
+          onClick={() => onDelete(admin._id)}
+        >
+          <TbTrash className="text-[20px]" />
+        </Button>
+      </Tooltip>
+    </td>
+  );
+};
+
+const AdminRow = ({
+  admin,
+  index,
+  onView,
+  onActivate,
+  onDeactivate,
+  onDelete,
+}) => {
+  const statusColors = {
+    active: "blue",
+    deactivated: "gray",
+  };
+
+  return (
+    <tr className="bg-white text-sm hover:bg-secondary-50">
+      <td className="w-[10px] whitespace-nowrap px-4 py-2">{index + 1}</td>
+      <td className="w-[150px] overflow-hidden text-ellipsis whitespace-nowrap px-4 py-2">
+        {admin.firstName} {admin.lastName}
+      </td>
+      <td className="w-[150px] overflow-hidden text-ellipsis whitespace-nowrap px-4 py-2">
+        <div className="w-max">
+          <Chip
+            variant="ghost"
+            color={statusColors[admin.adminStatus]}
+            value={admin.adminStatus}
+          />
+        </div>
+      </td>
+      <td className="w-[150px] overflow-hidden text-ellipsis whitespace-nowrap px-4 py-2">
+        {formatDate(admin.loginDate)}
+      </td>
+      <td className="w-[150px] overflow-hidden text-ellipsis whitespace-nowrap px-4 py-2">
+        {formatDate(admin.logoutDate)}
+      </td>
+      <td className="w-[150px] overflow-hidden text-ellipsis whitespace-nowrap px-4 py-2">
+        {dayjs(admin.createdAt).format("MMMM D, YYYY")}
+      </td>
+      <AdminActions
+        admin={admin}
+        onView={onView}
+        onActivate={onActivate}
+        onDeactivate={onDeactivate}
+        onDelete={onDelete}
+      />
+    </tr>
+  );
+};
 
 const AdminTable = () => {
   const [admins, setAdmins] = useState([]);
@@ -33,11 +141,6 @@ const AdminTable = () => {
     fetchAdmins();
   }, [getAllAdmins]);
 
-  const statusColors = {
-    active: "green",
-    deactivated: "gray",
-  };
-
   const handleViewAccount = (admin) => {
     setSelectedAdmin(admin);
     setViewAccount(true);
@@ -49,8 +152,10 @@ const AdminTable = () => {
   };
 
   const handleDeactivate = (adminId) => {
+    const adminToDeactivate = admins.find((admin) => admin._id === adminId);
+
     Swal.fire({
-      title: "Are you sure you want to deactivate this admin account?",
+      title: `Are you sure you want to deactivate ${adminToDeactivate.firstName} ${adminToDeactivate.lastName} account?`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Yes, deactivate it!",
@@ -65,12 +170,14 @@ const AdminTable = () => {
                 : admin,
             ),
           );
-
-          Swal.fire(
-            "Deactivated!",
-            "Admin account has been deactivated.",
-            "success",
-          );
+          Swal.fire({
+            title: "Deactivated!",
+            text: "Deactivated successfully.",
+            icon: "success",
+            confirmButtonText: "OK",
+          }).then(() => {
+            window.location.reload();
+          });
         } catch (error) {
           console.error("Failed to deactivate admin:", error);
           Swal.fire("Error", "Failed to deactivate admin account.", "error");
@@ -80,8 +187,10 @@ const AdminTable = () => {
   };
 
   const handleActivate = (adminId) => {
+    const adminToActivate = admins.find((admin) => admin._id === adminId);
+
     Swal.fire({
-      title: "Are you sure you want to activate this admin account?",
+      title: `Are you sure you want to activate ${adminToActivate.firstName} ${adminToActivate.lastName} account?`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Yes, activate it!",
@@ -96,7 +205,6 @@ const AdminTable = () => {
                 : admin,
             ),
           );
-
           Swal.fire(
             "Activated!",
             "Admin account has been activated.",
@@ -111,8 +219,10 @@ const AdminTable = () => {
   };
 
   const handleDelete = (adminId) => {
+    const adminToDelete = admins.find((admin) => admin._id === adminId);
+
     Swal.fire({
-      title: "You want to delete this admin account?",
+      title: `You want to delete ${adminToDelete.firstName} ${adminToDelete.lastName} account?`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Yes",
@@ -131,7 +241,6 @@ const AdminTable = () => {
               setAdmins((prev) =>
                 prev.filter((admin) => admin._id !== adminId),
               );
-
               Swal.fire(
                 "Deleted!",
                 "Admin account has been deleted.",
@@ -155,119 +264,41 @@ const AdminTable = () => {
             Admin List
           </Title>
         </div>
-        {/* table */}
-        <div className="overflow-x-auto">
-          <table className="table bg-white text-base">
-            <thead>
-              <tr className="border-b-2 border-secondary-200 text-base text-primary-500">
-                <th className="w-10">No</th>
-                <th className="min-w-[150px]">Name</th>
-                <th className="min-w-[130px]">Account Status</th>
-                <th className="min-w-[200px]">Last Log In</th>
-                <th className="min-w-[200px]">Last Log Out</th>
-                <th className="w-full">Created Date</th>
-                <th className="min-w-[150px]">Action</th>
+        <div className="overflow-auto bg-white p-4">
+          <table className="min-w-full divide-y-2 divide-secondary-100 text-sm">
+            <thead className="text-left">
+              <tr className="whitespace-nowrap text-primary-500">
+                <th className="px-4 py-2">No</th>
+                <th className="px-4 py-2">Name</th>
+                <th className="px-4 py-2">Account Status</th>
+                <th className="px-4 py-2">Last Log In</th>
+                <th className="px-4 py-2">Last Log Out</th>
+                <th className="px-4 py-2">Created Date</th>
+                <th className="px-4 py-2 text-right">Action</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-secondary-100">
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="h-[400px] text-center capitalize">
-                    <span className="loading loading-bars loading-lg"></span>
+                  <td colSpan="7" className="h-[400px] text-center capitalize">
+                    <span className="loading loading-bars loading-lg bg-primary-500"></span>
                   </td>
                 </tr>
-              ) : admins && admins.length > 0 ? (
+              ) : admins.length ? (
                 admins.map((admin, index) => (
-                  <tr
+                  <AdminRow
                     key={admin._id}
-                    className="text-sm uppercase hover:bg-secondary-50"
-                  >
-                    <td>{index + 1}</td>
-                    <td>
-                      {admin.firstName} {admin.lastName}
-                    </td>
-                    <td>
-                      <div className="flex font-semibold">
-                        <Chip
-                          variant="ghost"
-                          color={statusColors[admin.adminStatus]}
-                          value={
-                            <Typography
-                              variant="small"
-                              className="font-bold capitalize leading-none"
-                            >
-                              {admin.adminStatus}
-                            </Typography>
-                          }
-                        />
-                      </div>
-                    </td>
-                    <td>
-                      {admin.loginDate
-                        ? dayjs(admin.loginDate).format("MMM D - h:mm:s A")
-                        : "-"}
-                    </td>
-                    <td>
-                      {admin.logoutDate
-                        ? dayjs(admin.logoutDate).format("MMM D - h:mm:s A")
-                        : "-"}
-                    </td>
-                    <td>{dayjs(admin.createdAt).format("MMMM D, YYYY")}</td>
-                    <td className="flex items-center gap-3">
-                      <Tooltip
-                        content="View Account"
-                        className="!bg-opacity-60"
-                        placement="left"
-                      >
-                        <Button
-                          className="!bg-blue-500 !p-1"
-                          onClick={() => handleViewAccount(admin)}
-                        >
-                          <TbEye className="text-[20px]" />
-                        </Button>
-                      </Tooltip>
-                      {admin.adminStatus === "active" ? (
-                        <Tooltip
-                          content="Deactivate Account"
-                          className="!bg-opacity-60"
-                        >
-                          <Button
-                            className="!bg-neutral-500 !p-1"
-                            onClick={() => handleDeactivate(admin._id)}
-                          >
-                            <TbUserOff className="text-[20px]" />
-                          </Button>
-                        </Tooltip>
-                      ) : (
-                        <Tooltip
-                          content="Activate Account"
-                          className="!bg-opacity-60"
-                        >
-                          <Button
-                            className="!bg-green-500 !p-1"
-                            onClick={() => handleActivate(admin._id)}
-                          >
-                            <TbUserCheck className="text-[20px]" />
-                          </Button>
-                        </Tooltip>
-                      )}
-                      <Tooltip
-                        content="Delete Account"
-                        className="!bg-opacity-60"
-                      >
-                        <Button
-                          className="!bg-red-500 !p-1"
-                          onClick={() => handleDelete(admin._id)}
-                        >
-                          <TbTrash className="text-[20px]" />
-                        </Button>
-                      </Tooltip>
-                    </td>
-                  </tr>
+                    admin={admin}
+                    index={index}
+                    onView={handleViewAccount}
+                    onActivate={handleActivate}
+                    onDeactivate={handleDeactivate}
+                    onDelete={handleDelete}
+                  />
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="text-center capitalize">
+                  <td colSpan="7" className="text-center capitalize">
                     No admin records found.
                   </td>
                 </tr>
@@ -294,7 +325,7 @@ const AdminTable = () => {
             </div>
             <div className="flex flex-col gap-4 rounded-b-lg border border-secondary-300 bg-white p-4">
               <img
-                src={DefaultImage}
+                src={selectedAdmin.profilePicture || DefaultImage}
                 alt="Logo"
                 className="h-24 w-24 self-center rounded-full ring-2 ring-primary-500"
               />

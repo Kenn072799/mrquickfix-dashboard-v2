@@ -1,7 +1,5 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useRoutes, Navigate } from "react-router-dom";
-import axios from "axios";
-import { jwtDecode } from "jwt-decode";
 import MainLayout from "./components/layout/MainLayout";
 import PrivateRoute from "./components/layout/PrivateRoute";
 
@@ -15,75 +13,9 @@ import ResetPassword from "./components/login/ResetPassword";
 import Report from "./pages/Report";
 import MyProfile from "./pages/MyProfile";
 import ContentManagement from "./pages/ContentManagement";
-import Swal from "sweetalert2";
-
-const isTokenExpired = (token) => {
-  if (!token) return true; // No token means expired
-  const decoded = jwtDecode(token);
-  return decoded.exp * 1000 < Date.now();
-};
-
-const handleLogout = async () => {
-  try {
-    await axios.post(
-      "/api/auth/logout",
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-        },
-      },
-    );
-    localStorage.removeItem("authToken");
-    localStorage.setItem("isLoggedIn", "false");
-    window.location.href = "/login-admin";
-  } catch (error) {
-    console.error("Logout failed:", error);
-  }
-};
-
-const checkToken = async () => {
-  const token = localStorage.getItem("authToken");
-  if (!token || isTokenExpired(token)) {
-    handleLogout();
-    return;
-  }
-
-  try {
-    const decoded = jwtDecode(token);
-    decoded.userId;
-
-    const response = await axios.get(`/api/auth/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const userStatus = response.data.data.adminStatus;
-
-    if (userStatus === "inactive") {
-      handleLogout();
-    }
-  } catch (error) {
-    if (error.response && error.response.status === 404) {
-      Swal.fire("Error", "Account not found", "error");
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("userID");
-      localStorage.setItem("isLoggedIn", "false");
-      window.location.href = "/login-admin";
-      return;
-    } else {
-      console.error("Error checking user status:", error);
-    }
-    handleLogout();
-  }
-};
+import TestimonialForm from "./components/form/TestimonialForm";
 
 function App() {
-  useEffect(() => {
-    checkToken();
-  }, []);
-
   const routing = useRoutes([
     {
       path: "/login-admin",
@@ -101,6 +33,10 @@ function App() {
     {
       path: "/reset-password/:token",
       element: <ResetPassword />,
+    },
+    {
+      path: "/feedback/:id",
+      element: <TestimonialForm />,
     },
     {
       element: <PrivateRoute />,

@@ -20,7 +20,9 @@ const useCurrentTime = () => {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (days > 0) return `${days} day${days > 1 ? "s" : ""} ago`;
+    if (days > 7) return `${Math.floor(days / 7)} weeks ago`;
+    if (days > 1) return `${days} days ago`;
+    if (days === 1) return `${days} day ago`;
     if (hours > 0) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
     if (minutes > 0) return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
     return "just now";

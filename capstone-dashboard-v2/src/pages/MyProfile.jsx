@@ -17,7 +17,7 @@ const MyProfile = () => {
       <Title variant="secondaryBold" size="xxxl">
         My Profile
       </Title>
-      <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="mt-8 grid grid-cols-1 gap-6">
         <ProfileCard admin={admin} />
       </div>
     </div>

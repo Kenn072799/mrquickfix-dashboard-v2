@@ -9,13 +9,11 @@ const MainLayout = () => {
 
   return (
     <>
-      <div className="flex">
-        {isLoggedIn && <SideBar />}
-        <div className="flex w-full flex-col">
-          {isLoggedIn && <NavBar />}
-          <div>
-            <Outlet />
-          </div>
+      {isLoggedIn && <SideBar />}
+      <div className="lg:ml-24">
+        {isLoggedIn && <NavBar />}
+        <div>
+          <Outlet />
         </div>
       </div>
     </>

@@ -170,13 +170,13 @@ const LineChartCC = ({ projects = [] }) => {
               borderColor: "#4caf50",
             },
             {
-              label: "On Process Cancel",
+              label: "OP Cancel",
               data: monthlyOnProcessInquiries,
               tension: 0.5,
               borderColor: "#2196f3",
             },
             {
-              label: "In Progress Cancel",
+              label: "IP Cancel",
               data: monthlyInProgressInquiries,
               tension: 0.5,
               borderColor: "#FF8C00",

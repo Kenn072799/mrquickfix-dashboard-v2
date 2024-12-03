@@ -22,11 +22,14 @@ const adminSchema = new mongoose.Schema({
   },
   adminStatus: {
     type: String,
-    enum: ['active', 'inactive'],
+    enum: ['active', 'deactivated'],
     default: 'active',
   },
   profilePicture: {
     type: String, 
+  },
+  profilePublickey:{
+    type:String
   },
   isEmailVerified: {
     type: Boolean,

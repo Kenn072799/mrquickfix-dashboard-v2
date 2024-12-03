@@ -2,7 +2,10 @@ import Admin from '../models/admin.model.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { generateOTP, sendEmail } from '../utils/helpers.js';
+import { v2 as cloudinary } from 'cloudinary';
+import multer from 'multer';
+import { generateOTP, sendEmail, convertToWebP, upload_Single_Image } from '../utils/helpers.js';
+export const File_Storage = multer.memoryStorage();
 
 // @desc    Signup a new user
 // @route   POST /api/auth/signup
@@ -39,7 +42,37 @@ export const signup = async (req, res) => {
       }
   
       // Send OTP Email
-      const emailContent = `Your OTP for verification is: ${otp}`;
+      const emailContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container { padding: 20px; font-family: Arial, sans-serif; }
+        .header { color: #2c3e50; margin-bottom: 20px; }
+        .otp-box { 
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 24px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .footer { color: #7f8c8d; font-size: 12px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="header">Email Verification</h2>
+        <p>Thank you for registering! To complete your signup, please use the following OTP code:</p>
+        <div class="otp-box">${otp}</div>
+        <p>This code will expire in 15 minutes.</p>
+        <div class="footer">
+            <p>If you didn't request this verification, please ignore this email.</p>
+            <p>This is an automated message, please do not reply.</p>
+        </div>
+    </div>
+</body>
+</html>`;
       await sendEmail(email, 'Verify your email', emailContent);
   
       res.status(201).json({ message: 'User created or OTP resent, OTP sent!' });
@@ -98,7 +131,37 @@ export const resendOTP = async (req, res) => {
     user.otp = { code: newOTP, expiry: newExpiry };
     await user.save();
 
-    const emailContent = `Your new OTP is: ${newOTP}`;
+    const emailContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container { padding: 20px; font-family: Arial, sans-serif; }
+        .header { color: #2c3e50; margin-bottom: 20px; }
+        .otp-box { 
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 24px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .footer { color: #7f8c8d; font-size: 12px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="header">New OTP Code</h2>
+        <p>You requested a new OTP code. Here it is:</p>
+        <div class="otp-box">${newOTP}</div>
+        <p>This code will expire in 2 minutes.</p>
+        <div class="footer">
+            <p>If you didn't request this code, please ignore this email.</p>
+            <p>This is an automated message, please do not reply.</p>
+        </div>
+    </div>
+</body>
+</html>`;
     await sendEmail(email, 'New OTP Request', emailContent);
 
     res.json({ message: 'New OTP sent!' });
@@ -193,7 +256,38 @@ export const forgotPassword = async (req, res) => {
     await user.save();
 
     const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-    const emailContent = `Click this link to reset your password: ${resetLink}\n\nThis link will expire in 30 minutes. If you did not request this, please ignore this email.`; 
+    const emailContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container { padding: 20px; font-family: Arial, sans-serif; }
+        .header { color: #2c3e50; margin-bottom: 20px; }
+        .button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        .footer { color: #7f8c8d; font-size: 12px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="header">Password Reset Request</h2>
+        <p>We received a request to reset your password. Click the button below to reset it:</p>
+        <a href="${resetLink}" class="button">Reset Password</a>
+        <p>This link will expire in 30 minutes.</p>
+        <div class="footer">
+            <p>If you didn't request this password reset, please ignore this email.</p>
+            <p>This is an automated message, please do not reply.</p>
+        </div>
+    </div>
+</body>
+</html>`; 
     await sendEmail(email, 'Password Reset Request', emailContent);
 
     res.json({ message: 'Password reset email sent! Check your email' });
@@ -366,4 +460,56 @@ export const deleteAdmin = async (req, res) => {
         console.error("Error deleting user:", error.message);
         res.status(500).json({ success: false, message: "Server Error: Failed to delete user" });
     }
+};
+
+// @desc    Change profile picture
+// @route   PATCH /api/auth/admin/:id
+export const changeProfilePicture = async (req, res) => {
+  const { id } = req.params;
+  try {
+    cloudinary.config({
+      cloud_name: process.env.CLOUD_NAME,
+      api_key: process.env.API_KEY_CLOUD,
+      api_secret: process.env.API_SECRET_CLOUD
+    });
+
+    const existingProfile = await Admin.findOne({ _id: id });
+    if (!existingProfile) {
+      return res.status(400).json({ message: "This ID is unknown, please try again" });
+    }
+
+    if (existingProfile.profilePublickey) {
+      try {
+        await cloudinary.uploader.destroy(existingProfile.profilePublickey);
+      } catch (error) {
+        console.log('Error deleting existing profile picture:', error);
+      }
+    }
+
+    const buffer = req.file.buffer;
+    const webpBuffer = await convertToWebP(buffer);
+    
+    const data = await upload_Single_Image(webpBuffer);
+
+    await Admin.findByIdAndUpdate(id, {
+      profilePicture: data.url,
+      profilePublickey: data.public_id
+    });
+
+    res.status(201).json({ 
+      success: true,
+      message: 'Profile picture updated successfully!',
+      data: {
+        profilePicture: data.url,
+        profilePublickey: data.public_id
+      }
+    });
+  }
+  catch (error) {
+    console.error('Error during changing profile:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message || 'Failed to update profile picture'
+    });
+  }
 };

@@ -3,7 +3,7 @@ import { Calendar, dayjsLocalizer } from "react-big-calendar";
 import dayjs from "dayjs";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Title } from "../props/Title";
-import { TbX } from "react-icons/tb";
+import { TbChevronLeft, TbChevronRight, TbX } from "react-icons/tb";
 
 const localizer = dayjsLocalizer(dayjs);
 
@@ -97,7 +97,7 @@ const CalendarWithAlerts = ({ projects = [] }) => {
         backgroundColor,
         color,
         fontWeight: "bold",
-        fontSize: "14px",
+        fontSize: "12px",
         borderRadius: "4px",
       },
     };
@@ -164,8 +164,17 @@ const CalendarWithAlerts = ({ projects = [] }) => {
                       {getDurationInDays(
                         selectedEvent.jobStartDate,
                         selectedEvent.jobEndDate,
-                      )}{" "}
-                      days
+                      ) === 0 ? (
+                        <>1 day </>
+                      ) : (
+                        <>
+                          {getDurationInDays(
+                            selectedEvent.jobStartDate,
+                            selectedEvent.jobEndDate,
+                          )}{" "}
+                          days
+                        </>
+                      )}
                     </span>
                   </>
                 ) : (
@@ -182,16 +191,108 @@ const CalendarWithAlerts = ({ projects = [] }) => {
         </div>
       )}
 
-      <Calendar
-        localizer={localizer}
-        events={myEventsList}
-        startAccessor="start"
-        endAccessor="end"
-        className="h-[700px] bg-white p-4"
-        onSelectEvent={handleEventClick}
-        eventPropGetter={eventStyleGetter}
-      />
+      <div className="relative w-full overflow-x-auto">
+        <Calendar
+          localizer={localizer}
+          events={myEventsList}
+          startAccessor="start"
+          endAccessor="end"
+          className="min-h-[500px] bg-white p-4 md:h-[700px]"
+          onSelectEvent={handleEventClick}
+          eventPropGetter={eventStyleGetter}
+          views={["month", "week", "day"]}
+          defaultView={window.innerWidth < 768 ? "day" : "month"}
+          toolbar={true}
+          components={{
+            toolbar: CustomToolbar,
+          }}
+        />
+      </div>
     </>
+  );
+};
+
+const CustomToolbar = (toolbar) => {
+  const goToBack = () => {
+    toolbar.onNavigate("PREV");
+  };
+
+  const goToNext = () => {
+    toolbar.onNavigate("NEXT");
+  };
+
+  const goToCurrent = () => {
+    toolbar.onNavigate("TODAY");
+  };
+
+  const label = () => {
+    const date = dayjs(toolbar.date);
+    return (
+      <span className="text-sm font-semibold md:text-base">
+        {date.format("MMMM YYYY")}
+      </span>
+    );
+  };
+
+  return (
+    <div className="flex flex-col justify-between gap-2 p-4 md:flex-row items-center">
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={goToBack}>
+          <div className="rounded-lg border p-1 active:bg-secondary-50">
+            <TbChevronLeft />
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={goToCurrent}
+          className="rounded-md px-3 py-1 text-sm hover:bg-secondary-100"
+        >
+          Today
+        </button>
+        <button type="button" onClick={goToNext}>
+          <div className="rounded-lg border p-1 active:bg-secondary-50">
+            <TbChevronRight />
+          </div>
+        </button>
+        <span className="ml-2">{label()}</span>
+      </div>
+
+      <div className="flex gap-2 text-sm">
+        <button
+          type="button"
+          onClick={() => toolbar.onView("month")}
+          className={`rounded-md px-3 py-1 ${
+            toolbar.view === "month"
+              ? "bg-primary-500 text-white"
+              : "hover:bg-secondary-100"
+          }`}
+        >
+          Month
+        </button>
+        <button
+          type="button"
+          onClick={() => toolbar.onView("week")}
+          className={`rounded-md px-3 py-1 ${
+            toolbar.view === "week"
+              ? "bg-primary-500 text-white"
+              : "hover:bg-secondary-100"
+          }`}
+        >
+          Week
+        </button>
+        <button
+          type="button"
+          onClick={() => toolbar.onView("day")}
+          className={`rounded-md px-3 py-1 ${
+            toolbar.view === "day"
+              ? "bg-primary-500 text-white"
+              : "hover:bg-secondary-100"
+          }`}
+        >
+          Day
+        </button>
+      </div>
+    </div>
   );
 };
 

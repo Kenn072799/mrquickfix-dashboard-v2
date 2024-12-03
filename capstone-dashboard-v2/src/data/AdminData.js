@@ -1,6 +1,46 @@
 import axios from "axios";
 import { create } from "zustand";
 import Swal from "sweetalert2";
+import { jwtDecode } from "jwt-decode";
+
+const API_ENDPOINTS = {
+  LOGIN: "/api/auth/login",
+  LOGOUT: "/api/auth/logout",
+  FORGOT_PASSWORD: "/api/auth/forgot-password",
+  RESET_PASSWORD: "/api/auth/reset-password",
+  ME: "/api/auth/me",
+  SIGNUP: "/api/auth/signup",
+  VERIFY_OTP: "/api/auth/verify-otp",
+  RESEND_OTP: "/api/auth/resend-otp",
+  COMPLETE_REGISTRATION: "/api/auth/complete-registration",
+  ADMIN: "/api/auth/admin",
+};
+
+const handleApiError = (error) => {
+  const errorMessage = error.response?.data?.message || error.message;
+  console.error("API Error:", {
+    timestamp: new Date().toISOString(),
+    error: errorMessage,
+    stack: error.stack
+  });
+  return errorMessage;
+};
+
+const checkAndHandleToken = () => {
+  const token = localStorage.getItem("authToken");
+  if (!token) {
+    throw new Error("No authorization token found");
+  }
+  return token;
+};
+
+const handleAuthenticationError = () => {
+  localStorage.removeItem("authToken");
+  localStorage.setItem("isLoggedIn", "false");
+  window.location.href = "/login-admin";
+};
+
+let statusCheckInterval;
 
 export const useAdminData = create((set) => ({
   admin: null,
@@ -10,298 +50,389 @@ export const useAdminData = create((set) => ({
   resendStatus: null,
   timer: 0,
 
-  // Login function
+  startStatusCheck: () => {
+    if (statusCheckInterval) {
+      clearInterval(statusCheckInterval);
+    }
+    
+    statusCheckInterval = setInterval(async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!token) return;
+
+        // Check token expiration
+        const decoded = jwtDecode(token);
+        if (decoded.exp * 1000 < Date.now()) {
+          await Swal.fire({
+            title: "Session Ended",
+            text: message,
+            icon: "warning",
+            confirmButtonText: "OK",
+            allowOutsideClick: false
+          }).then(() => {
+            handleAuthenticationError();
+          });
+          return;
+        }
+
+        // Check admin status
+        const res = await axios.get(API_ENDPOINTS.ME, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (res.data.data.adminStatus === "deactivated") {
+          await Swal.fire("Account Deactivated", "Your account has been deactivated", "warning")
+          .then(() => {
+            handleAuthenticationError();
+          });
+          return;
+        }
+
+      } catch (error) {
+        console.error("Status check failed:", error);
+        if (error.response?.status === 401) {
+          handleAuthenticationError();
+        }
+      }
+    }, 30000); // Check every 30 seconds
+  },
+
+  stopStatusCheck: () => {
+    if (statusCheckInterval) {
+      clearInterval(statusCheckInterval);
+      statusCheckInterval = null;
+    }
+  },
+
+  // @desc Login admin 
+  // API ENDPOINT: POST /api/auth/login
   loginAdmin: async (formData) => {
     set({ loading: true, error: null });
     try {
-      const res = await axios.post("/api/auth/login", formData);
-      localStorage.setItem("authToken", res.data.token);
-      set({ admin: res.data, loading: false });
+      const res = await axios.post(API_ENDPOINTS.LOGIN, formData);
+      const { token, ...userData } = res.data;
+      
+      localStorage.setItem("authToken", token);
       localStorage.setItem("isLoggedIn", "true");
-      return res.data;
+      
+      set({ admin: userData, loading: false });
+      useAdminData.getState().startStatusCheck();
+      return userData;
     } catch (error) {
-      set({
-        error: error.response?.data?.message || error.message,
-        loading: false,
-      });
+      const errorMessage = handleApiError(error);
+      set({ error: errorMessage, loading: false });
       throw error;
     }
   },
 
-  // Logout function
-  logoutAdmin: async () => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      console.error('No token found for logout.');
-      return;
-    }
-  
+  // @desc Logout admin
+  // API ENDPOINT: POST /api/auth/logout
+  logoutAdmin: async () => {  
     try {
-      const response = await axios.post("/api/auth/logout", {}, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+      const token = checkAndHandleToken();
+      const response = await axios.post(API_ENDPOINTS.LOGOUT, {}, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       
       if (response.data.logout) {
-        set({ admin: null });
-        localStorage.removeItem("isLoggedIn");
+        useAdminData.getState().stopStatusCheck();
         localStorage.removeItem("authToken");
-        Swal.fire("Success", "Logout successful!", "success");
+        localStorage.removeItem("isLoggedIn");
+        set({ admin: null });
+        await Swal.fire("Success", "Logout successful!", "success");
       }
     } catch (error) {
-      console.error('Logout failed:', error);
-      set({ error: error.response?.data?.message || error.message });
+      handleApiError(error);
       throw error;
     }
   },
 
-  // Forgot password function
-  forgotPass: async (email) => {
-    set({ loading: true, error: null, message: null });
-    try {
-      const response = await axios.post('/api/auth/forgot-password', { email });
-      set({
-        loading: false,
-        message: response.data.message,
-        error: null
-      });
-    } catch (error) {
-      set({
-        loading: false,
-        message: '',
-        error: error.response?.data?.message || 'An error occurred. Please try again later.'
-      });
-    }
-  },
-
-  // Reset password function
-  resetPassword: async (token, newPassword) => {
-    set({ loading: true, error: null, message: null });
-  
-    try {
-      const res = await axios.post(`/api/auth/reset-password/${token}`, { newPassword });
-      set({
-        loading: false,
-        message: res.data.message,
-        error: null,
-      });
-    } catch (error) {
-      set({
-        loading: false,
-        message: '',
-        error: error.response?.data?.message || 'An error occurred. Please try again later.',
-      });
-    }
-  },
-
-  // Get logged-in admin details
+  // @desc Get logged in admin
+  // API ENDPOINT: GET /api/auth/me
   getLoggedInAdmin: async () => {
     set({ loading: true, error: null });
     try {
-        const token = localStorage.getItem("authToken");
+      const token = checkAndHandleToken();
+      
+      const decoded = jwtDecode(token);
+      if (decoded.exp * 1000 < Date.now()) {
+        throw new Error("Token expired");
+      }
 
-        if (!token) {
-            alert("You are not logged in. Please log in again.");
-            window.location.href = "/login-admin";
-            return;
-        }
+      const res = await axios.get(API_ENDPOINTS.ME, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-        const res = await axios.get("/api/auth/me", {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
+      const adminData = res.data.data;
+      
+      if (adminData.adminStatus === "deactivated") {
+        throw new Error("Account deactivated");
+      }
 
-        set({ admin: res.data.data, loading: false });
-        return res.data.data;
+      set({ admin: adminData, loading: false });
+      return adminData;
+
     } catch (error) {
-        if (error.response?.status === 401 || error.response?.status === 403) {
-            alert("Session has expired or is invalid. Please log in again.");
-            localStorage.removeItem("authToken");
-            localStorage.setItem("isLoggedIn", "false");
-            window.location.href = "/login-admin";
-        } else {
-            set({
-                admin: null,
-                error: error.response?.data?.message || error.message,
-                loading: false
-            });
-        }
-        throw error;
-    }
-  },
-
-
-  // Signup function
-  signup: async (formData) => {
-    set({ loading: true, error: null });
-    try {
-      const res = await axios.post("/api/auth/signup", formData);
-      set({ admin: res.data, loading: false });
-      Swal.fire("Success", "Signup successful!", "success");
-      return res.data;
-    } catch (error) {
-      set({ error: error.response?.data?.message || error.message, loading: false });
+      const errorMessage = handleApiError(error);
+      
+      if (error.message === "Token expired" || error.message === "Account deactivated") {
+        handleAuthenticationError();
+        await Swal.fire("Error", errorMessage, "error");
+      }
+      
+      set({ admin: null, error: errorMessage, loading: false });
       throw error;
     }
   },
 
-  // Verify OTP function
-  verifyOTP: async (email, otp) => {
-    set({ loading: true, error: null });
-  
-    try {
-      const res = await axios.post("/api/auth/verify-otp", { email, otp });
-      if (res.data && res.data.message === 'OTP verified successfully') { 
-        set({ loading: false, error: null });
-        return { success: true }; 
-      } else {
-        set({ loading: false, error: "Incorrect OTP. Please try again." });
-        return { success: false }; 
-      }
-    } catch (error) {
-      set({
-        loading: false,
-        error: error.response?.data?.message || "An error occurred. Please try again.",
-      });
-      return { success: false };
-    }
-  },
-
-  // Resend OTP function
-  resendOTP: async (email) => {
-    set({ loading: true, error: null });
-  
-    try {
-      const res = await axios.post("/api/auth/resend-otp", { email });
-      set({ loading: false, resendStatus: res.data.message });
-    } catch (error) {
-      set({ 
-        error: error.response?.data?.message || error.message, 
-        loading: false 
-      });
-    }
-  },
-
-  // Complete registration details
-  completeDetails: async (formData, email) => {
-    set({ loading: true, error: null });
-  
-    if (!formData.firstName || !formData.lastName || !formData.phone) {
-      set({ error: 'Please fill in all required fields', loading: false });
-      return;
-    }
-  
-    try {
-      const res = await axios.post("/api/auth/complete-registration", {
-        ...formData,
-        email: email,
-      });
-      set({ loading: false, error: null });
-      return res.data;
-    } catch (error) {
-      set({ 
-        error: error.response?.data?.message || error.message, 
-        loading: false 
-      });
-    }
-  },
-
-  // Get all admins
+  // @desc Get all admins
+  // API ENDPOINT: GET /api/auth/admin
   getAllAdmins: async () => {
     set({ loading: true, error: null });
-  
     try {
-      const res = await axios.get("/api/auth/admin");
+      const token = checkAndHandleToken();
+      const res = await axios.get(API_ENDPOINTS.ADMIN, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
       set({ admins: res.data.data, loading: false });
       return res.data.data;
     } catch (error) {
-      set({ 
-        error: error.response?.data?.message || error.message, 
-        loading: false 
-      });
+      const errorMessage = handleApiError(error);
+      set({ error: errorMessage, loading: false });
+      throw error;
     }
   },
 
-// Update admin details
-updateAdmin: async (formData) => {
-  set({ loading: true, error: null });
-  try {
-    const res = await axios.patch(`/api/auth/${formData._id}`, formData);
-    set((state) => ({
-      admins: state.admins.map((admin) => (admin._id === formData._id ? res.data : admin)),
-    }));
-    return res.data;
-  } catch (error) {
-    set({
-      error: error.response?.data?.message || error.message,
-      loading: false,
-    });
-  }
-},
+  // @desc Update admin
+  // API ENDPOINT: PATCH /api/auth/:id
+  updateAdmin: async (formData) => {
+    set({ loading: true, error: null });
+    try {
+      const token = checkAndHandleToken();
+      const res = await axios.patch(`/api/auth/${formData._id}`, formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      set((state) => ({
+        admins: state.admins.map((admin) => 
+          admin._id === formData._id ? res.data : admin
+        ),
+        loading: false
+      }));
+      
+      return res.data;
+    } catch (error) {
+      const errorMessage = handleApiError(error);
+      set({ error: errorMessage, loading: false });
+      throw error;
+    }
+  },
 
-  // Deactivate admin
+  // @desc Deactivate admin
+  // API ENDPOINT: PATCH /api/auth/deactivate/:id
   deactivateAdmin: async (adminId) => {
     set({ loading: true, error: null });
     try {
-      const res = await axios.patch(`/api/auth/deactivate/${adminId}`);
+      const token = checkAndHandleToken();
+      const res = await axios.patch(`/api/auth/deactivate/${adminId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
       set((state) => ({
         admins: state.admins.map((admin) =>
           admin._id === adminId ? { ...admin, adminStatus: "inactive" } : admin
         ),
-        loading: false,
+        loading: false
       }));
+      
       return res.data;
     } catch (error) {
-      set({
-        error: error.response?.data?.message || error.message,
-        loading: false,
-      });
-      Swal.fire("Error", error.response?.data?.message || "Failed to deactivate admin.", "error");
+      const errorMessage = handleApiError(error);
+      set({ error: errorMessage, loading: false });
+      await Swal.fire("Error", errorMessage, "error");
       throw error;
     }
   },
 
-  // Activate admin
+  // @desc Activate admin
+  // API ENDPOINT: PATCH /api/auth/activate/:id
   activateAdmin: async (adminId) => {
     set({ loading: true, error: null });
     try {
-      const res = await axios.patch(`/api/auth/activate/${adminId}`);
+      const token = checkAndHandleToken();
+      const res = await axios.patch(`/api/auth/activate/${adminId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
       set((state) => ({
         admins: state.admins.map((admin) =>
           admin._id === adminId ? { ...admin, adminStatus: "active" } : admin
         ),
-        loading: false,
+        loading: false
       }));
+      
       return res.data;
     } catch (error) {
-      set({
-        error: error.response?.data?.message || error.message,
-        loading: false,
-      });
-      Swal.fire("Error", error.response?.data?.message || "Failed to activate admin.", "error");
+      const errorMessage = handleApiError(error);
+      set({ error: errorMessage, loading: false });
+      await Swal.fire("Error", errorMessage, "error");
       throw error;
     }
   },
 
-  // Delete admin
+  // @desc Delete admin
+  // API ENDPOINT: DELETE /api/auth/delete/:id
   deleteAdmin: async (adminId) => {
     set({ loading: true, error: null });
     try {
-      await axios.delete(`/api/auth/delete/${adminId}`);
+      const token = checkAndHandleToken();
+      await axios.delete(`/api/auth/delete/${adminId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
       set((state) => ({
         admins: state.admins.filter((admin) => admin._id !== adminId),
-        loading: false,
+        loading: false
       }));
     } catch (error) {
-      set({
-        error: error.response?.data?.message || error.message,
-        loading: false,
-      });
-      Swal.fire("Error", error.response?.data?.message || "Failed to delete admin.", "error");
+      const errorMessage = handleApiError(error);
+      set({ error: errorMessage, loading: false });
+      await Swal.fire("Error", errorMessage, "error");
       throw error;
     }
   },
 
+  // @desc Signup admin
+  // API ENDPOINT: POST /api/auth/signup
+  signup: async (formData) => {
+    set({ loading: true, error: null });
+    try {
+      const res = await axios.post(API_ENDPOINTS.SIGNUP, formData);
+      set({ admin: res.data, loading: false });
+      return res.data;
+    } catch (error) {
+      const errorMessage = handleApiError(error);
+      set({ error: errorMessage, loading: false });
+      throw error;
+    }
+  },
+
+  // @desc Verify OTP
+  // API ENDPOINT: POST /api/auth/verify-otp
+  verifyOTP: async (email, otp) => {
+    set({ loading: true, error: null });
+    try {
+      const res = await axios.post(API_ENDPOINTS.VERIFY_OTP, { email, otp });
+      const success = res.data?.message === 'OTP verified successfully';
+      
+      set({ loading: false, error: success ? null : "Incorrect OTP" });
+      return { success };
+    } catch (error) {
+      const errorMessage = handleApiError(error);
+      set({ loading: false, error: errorMessage });
+      return { success: false };
+    }
+  },
+
+  // @desc Resend OTP
+  // API ENDPOINT: POST /api/auth/resend-otp
+  resendOTP: async (email) => {
+    set({ loading: true, error: null });
+    try {
+      const res = await axios.post(API_ENDPOINTS.RESEND_OTP, { email });
+      set({ loading: false, resendStatus: res.data.message });
+    } catch (error) {
+      const errorMessage = handleApiError(error);
+      set({ error: errorMessage, loading: false });
+    }
+  },
+
+  // @desc Complete details
+  // API ENDPOINT: POST /api/auth/complete-registration
+  completeDetails: async (formData, email) => {
+    set({ loading: true, error: null });
+    
+    if (!formData.firstName || !formData.lastName || !formData.phone) {
+      set({ error: 'Please fill in all required fields', loading: false });
+      return;
+    }
+    
+    try {
+      const res = await axios.post(API_ENDPOINTS.COMPLETE_REGISTRATION, {
+        ...formData,
+        email
+      });
+      set({ loading: false, error: null });
+      return res.data;
+    } catch (error) {
+      const errorMessage = handleApiError(error);
+      set({ error: errorMessage, loading: false });
+    }
+  },
+
+    // @desc Forgot password function
+    // API ENDPOINT: POST /api/auth/forgot-password
+    forgotPass: async (email) => {
+      set({ loading: true, error: null, message: null });
+      try {
+        const response = await axios.post('/api/auth/forgot-password', { email });
+        set({
+          loading: false,
+          message: response.data.message,
+          error: null
+        });
+      } catch (error) {
+        set({
+          loading: false,
+          message: '',
+          error: error.response?.data?.message || 'An error occurred. Please try again later.'
+        });
+      }
+    },
+  
+    // @desc Reset password
+    // API ENDPOINT: POST /api/auth/reset-password
+    resetPassword: async (token, newPassword) => {
+      set({ loading: true, error: null, message: null });
+    
+      try {
+        const res = await axios.post(`/api/auth/reset-password/${token}`, { newPassword });
+        set({
+          loading: false,
+          message: res.data.message,
+          error: null,
+        });
+      } catch (error) {
+        set({
+          loading: false,
+          message: '',
+          error: error.response?.data?.message || 'An error occurred. Please try again later.',
+        });
+      }
+    },
+
+    // @desc Change profile
+    // API ENDPOINT: PATCH /api/auth/change-profile
+    uploadProfile: async(adminID, profilePicture)=>{
+      set({ loading: true, error: null });
+      const formPicture = new FormData();
+      formPicture.append("profile",profilePicture);
+      console.log(profilePicture)
+      try{
+      const res = await axios.patch(`/api/auth/change-profile/${adminID}`, formPicture);
+      set((state) => ({
+        admins: state.admins.map((admin) => (admin._id === formData._id ? res.data : admin)),
+      }));
+      return res.data;
+      }
+      catch(error){
+        set({
+          error: error.response?.data?.message || error.message,
+          loading: false,
+        });
+        Swal.fire("Error", error.response?.data?.message || "Failed to change profile.", "error");
+        throw error;
+      }
+    },
 }));

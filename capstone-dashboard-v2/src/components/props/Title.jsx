@@ -23,10 +23,9 @@ export const Title = ({
   const sizeStyle = {
     xxxxxl: "text-5xl",
     xxxxl: "text-4xl",
-    xxxl: "text-3xl",
-    xxl: "text-2xl",
-    xl: "text-xl",
-    lg: "text-lg",
+    xxxl: "text-2xl",
+    xl: "text-lg",
+    lg: "text-base",
     md: "text-md",
     sm: "text-sm",
   };

@@ -47,7 +47,7 @@ const Dashboard = () => {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="spinner-border text-primary" role="status">
-          <span className="loading loading-bars loading-lg"></span>
+          <span className="loading loading-bars loading-lg bg-primary-500"></span>
         </div>
       </div>
     );
@@ -79,7 +79,7 @@ const Dashboard = () => {
         {/* Notifications Section */}
         <div className="flex flex-col">
           <Title variant="secondaryNormal" size="xl">
-            Project Status Alert
+            Project Alert
           </Title>
           <div className="mb-2 mt-4 flex select-none flex-col gap-1 rounded-sm bg-white px-4 py-4 text-sm shadow-md shadow-secondary-100">
             <div className="flex items-center justify-between">
@@ -126,7 +126,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="mt-4 rounded-t-sm border border-secondary-200 bg-secondary-100 px-6 py-3 shadow-md shadow-secondary-100">
+      <div className="mt-4 rounded-t-sm border border-secondary-200 bg-secondary-100 px-6 py-2 shadow-md shadow-secondary-100">
         <Title variant="secondarySemibold" size="lg">
           Project Calendar List
         </Title>

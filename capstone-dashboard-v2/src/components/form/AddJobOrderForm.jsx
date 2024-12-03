@@ -30,12 +30,18 @@ const servicesList = {
 };
 
 const AddJobOrderForm = ({ onClose, adminId }) => {
+  const userID = localStorage.getItem("userID");
+
   const [selectedOptions, setSelectedOptions] = useState([]);
   const [quotationUploaded, setQuotationUploaded] = useState(false);
   const [inspectionDate, setInspectionDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [filteredServices, setFilteredServices] = useState([]);
-
+  const [newData, setNewData] = useState({});
+  const [status, setStatus] = useState({
+    success: true,
+    message: "",
+  });
   const [newJobOrder, setNewJobOrder] = useState({
     projectID: "",
     clientFirstName: "",
@@ -45,7 +51,7 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
     clientPhone: "",
     jobType: "",
     jobServices: [],
-    jobQuotation: "",
+    jobQuotation: null,
     jobStartDate: "",
     jobEndDate: "",
     jobExtendedDate: "",
@@ -55,26 +61,16 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
     jobCancellationReason: "",
     jobPreviousStatus: "",
     createdBy: adminId,
-    updatedBy: adminId,
+    // updatedBy: 0,
   });
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     setQuotationUploaded(!!file);
-  
-    if (!file) {
-      setNewJobOrder((prev) => ({
-        ...prev,
-        jobQuotation: "",
-        jobStartDate: "",
-        jobEndDate: "",
-      }));
-    } else {
-      setNewJobOrder((prev) => ({
-        ...prev,
-        jobQuotation: file.name,
-      }));
-    }
+    setNewJobOrder((prev) => ({
+      ...prev,
+      jobQuotation: file ? file : null,
+    }));
   };
 
   const handleSchedInspectionChange = (e) => {
@@ -96,9 +92,54 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
     });
   };
 
-  const { createProject } = useJobOrderData();
+  const { createProject, createProjectOnProcess } = useJobOrderData();
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   const handleAddJobOrder = async () => {
+    if (
+      !newJobOrder.clientFirstName ||
+      !newJobOrder.clientLastName ||
+      !newJobOrder.clientAddress ||
+      !newJobOrder.clientEmail ||
+      !newJobOrder.clientPhone ||
+      !newJobOrder.jobType ||
+      !newJobOrder.jobServices
+    ) {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "Please fill out all required fields.",
+      });
+      return;
+    }
+
+    if (
+      /[0-9]/.test(newJobOrder.clientFirstName) ||
+      /[0-9]/.test(newJobOrder.clientFirstName)
+    ) {
+      Swal.fire({
+        icon: "warning",
+        title: "Warning",
+        text: "First name and last name cannot contain numbers.",
+      });
+      return;
+    } else if (/[a-zA-Z]/.test(newJobOrder.clientPhone)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Warning",
+        text: "Phone number cannot contain letters.",
+      });
+      return;
+    } else if (!emailRegex.test(newJobOrder.clientEmail)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Warning",
+        text: "Please enter a valid email address.",
+      });
+      return;
+    }
+
     if (
       newJobOrder.jobQuotation &&
       newJobOrder.jobStartDate &&
@@ -116,23 +157,59 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
       return;
     }
 
+    const newJob = new FormData();
+    newJob.append("projectID", newJobOrder.projectID);
+    newJob.append("clientFirstName", newJobOrder.clientFirstName);
+    newJob.append("clientLastName", newJobOrder.clientLastName);
+    newJob.append("clientAddress", newJobOrder.clientAddress);
+    newJob.append("clientEmail", newJobOrder.clientEmail);
+    newJob.append("clientPhone", newJobOrder.clientPhone);
+    newJob.append("jobType", newJobOrder.jobType);
+    for (let i = 0; i < newJobOrder.jobServices.length; i++) {
+      newJob.append("jobServices", newJobOrder.jobServices[i]);
+    }
+    // newJob.append("jobServices", newJobOrder.jobServices)
+    newJob.append("jobQuotation", newJobOrder.jobQuotation);
+    newJob.append("jobStartDate", newJobOrder.jobStartDate);
+    newJob.append("jobEndDate", newJobOrder.jobEndDate);
+    newJob.append("jobExtendedDate", newJobOrder.jobExtendedDate);
+    newJob.append("jobInspectionDate", newJobOrder.jobInspectionDate);
+    newJob.append("jobStatus", newJobOrder.jobStatus);
+    newJob.append("jobNotificationAlert", newJobOrder.jobNotificationAlert);
+    newJob.append("jobCancellationReason", newJobOrder.jobCancellationReason);
+    newJob.append("jobPreviousStatus", newJobOrder.jobPreviousStatus);
+    newJob.append("createdBy", userID);
+
     setLoading(true);
 
-    const { success, message } = await createProject(newJobOrder);
+    if (newJobOrder.jobQuotation === null) {
+      const { success, message } = await createProjectOnProcess(newJobOrder);
+      status.message = message;
+      status.success = success;
+      setLoading(false);
+      // console.log(newJobOrder);
+      // setLoading(false);
+    } else {
+      const { success, message } = await createProject(newJob);
+      status.message = message;
+      status.success = success;
+      // for(const value of newJob.values()){
+      //     console.log(value)
+      //   }
+      setLoading(false);
+    }
 
-    setLoading(false);
-
-    if (!success) {
+    if (!status.success) {
       Swal.fire({
         icon: "error",
         title: "Oops...",
-        text: message,
+        text: status.message,
       });
     } else {
       Swal.fire({
         icon: "success",
         title: "Success",
-        text: message,
+        text: status.message,
       });
       onClose();
     }
@@ -147,7 +224,7 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
   }, [newJobOrder.jobType]);
 
   return (
-    <div className="max-w-[500px] rounded-lg">
+    <div className="w-full max-w-[500px] rounded-lg px-2 sm:px-0">
       <div className="flex cursor-pointer items-center justify-between rounded-t-md border border-b-0 border-secondary-300 bg-secondary-100 px-4 py-2">
         <Title>Add Job Order</Title>
         <div
@@ -162,7 +239,7 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
       <div className="max-h-[90vh] w-full overflow-auto rounded-b-md border border-secondary-300 bg-white p-4">
         <div className="flex flex-col gap-4">
           {/* Name */}
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               value={newJobOrder.clientFirstName}
               label="First name"
@@ -193,7 +270,7 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
             }
           />
           {/* Email and Phone Number */}
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               value={newJobOrder.clientEmail}
               label="Email address"
@@ -225,7 +302,7 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
           </Select>
           {/* Select Services */}
           <label className="text-sm">Select Services:</label>
-          <div className="max-h-[104px] overflow-y-auto rounded border">
+          <div className="max-h-[150px] sm:max-h-[104px] overflow-y-auto rounded border">
             <List className="flex-col">
               {filteredServices.length > 0 ? (
                 filteredServices.map((service, index) => (
@@ -266,7 +343,7 @@ const AddJobOrderForm = ({ onClose, adminId }) => {
             disabled={inspectionDate}
           />
           {/* Start and End Date */}
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               value={newJobOrder.jobStartDate}
               disabled={!quotationUploaded}

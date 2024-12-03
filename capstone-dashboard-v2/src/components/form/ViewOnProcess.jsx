@@ -22,21 +22,7 @@ import { useJobOrderData } from "../../data/JobOrderData";
 import Swal from "sweetalert2";
 import { useAdminData } from "../../data/AdminData";
 import { useJobAlertProgress } from "../../data/useJobAlertProgress";
-
-const servicesList = {
-  Repairs: [
-    "Fits-outs (Painting, Carpentry, Masonry)",
-    "Door and Window Repairs",
-    "Electrical Works",
-  ],
-  Renovation: [
-    "Fits-outs (Painting, Carpentry, Masonry)",
-    "Kitchen and Bath Renovation",
-    "Outdoor and Landscaping",
-  ],
-  "Preventive Maintenance Service (PMS)": ["Aircon Services"],
-  "Cleaning Services": ["Household Cleaning Services"],
-};
+import useService from "../hooks/useService";
 
 const ViewOnProcess = ({ jobOrder, onClose }) => {
   const [selectedOptions, setSelectedOptions] = useState([]);
@@ -48,6 +34,7 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
   const { updateJobOrder } = useJobOrderData();
   const { getLoggedInAdmin, admin } = useAdminData();
   const [admins, setAdmins] = useState([]);
+  const { servicesList } = useService();
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -125,6 +112,54 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
       return;
     }
 
+    if (
+      /[0-9]/.test(updatedProject.clientFirstName) ||
+      /[0-9]/.test(updatedProject.clientLastName)
+    ) {
+      showAlert(
+        "warning",
+        "Warning",
+        "First name and last name cannot contain numbers.",
+      );
+      return;
+    }
+
+    if (/[a-zA-Z]/.test(updatedProject.clientPhone)) {
+      showAlert("warning", "Warning", "Phone number cannot contain letters.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(updatedProject.clientEmail)) {
+      showAlert("warning", "Warning", "Please enter a valid email address.");
+      return;
+    }
+
+    const requiredFields = [
+      "clientFirstName",
+      "clientLastName",
+      "clientEmail",
+      "clientPhone",
+      "clientAddress",
+      "jobType",
+      "jobServices",
+    ];
+    const missingFields = requiredFields.filter((field) => {
+      if (field === "jobServices") {
+        return !updatedProject[field] || updatedProject[field].length === 0;
+      }
+      return !updatedProject[field];
+    });
+
+    if (missingFields.length > 0) {
+      showAlert(
+        "warning",
+        "Warning",
+        `Please fill in all required fields: ${missingFields.join(", ")}`,
+      );
+      return;
+    }
+
     const result = await Swal.fire({
       title: "Do you want to save the changes?",
       showCancelButton: true,
@@ -134,21 +169,59 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
     if (result.isConfirmed) {
       try {
         setLoading(true);
+
+        const hasNewFile = updatedProject.jobQuotation instanceof File;
+
+        let payload;
+        if (hasNewFile) {
+          const formData = new FormData();
+          formData.append("jobQuotation", updatedProject.jobQuotation);
+          formData.append("jobType", updatedProject.jobType);
+          formData.append(
+            "jobServices",
+            JSON.stringify(updatedProject.jobServices),
+          );
+          formData.append("clientFirstName", updatedProject.clientFirstName);
+          formData.append("clientLastName", updatedProject.clientLastName);
+          formData.append("clientEmail", updatedProject.clientEmail);
+          formData.append("clientPhone", updatedProject.clientPhone);
+          formData.append("clientAddress", updatedProject.clientAddress);
+          formData.append("jobStartDate", updatedProject.jobStartDate);
+          formData.append("jobEndDate", updatedProject.jobEndDate);
+          formData.append(
+            "jobExtendedDate",
+            updatedProject.jobExtendedDate || "",
+          );
+          formData.append("jobStatus", updatedProject.jobStatus);
+          payload = formData;
+        } else {
+          payload = updatedProject;
+        }
+
         const { success, message } = await updateJobOrder(
           updatedProject._id,
-          updatedProject,
+          payload,
         );
-        setLoading(false);
 
         if (success) {
           showAlert("success", "Saved!", "Job order updated successfully!");
           onClose();
         } else {
-          showAlert("error", "Oops...", message);
+          showAlert(
+            "error",
+            "Update Failed",
+            message || "Failed to update job order",
+          );
         }
       } catch (error) {
+        console.error("Update error:", error);
+        showAlert(
+          "error",
+          "Error",
+          "An unexpected error occurred while updating the job order.",
+        );
+      } finally {
         setLoading(false);
-        showAlert("error", "Error", "Failed to update job order.");
       }
     }
   };
@@ -168,8 +241,39 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
     });
   };
 
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toISOString().split("T")[0];
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const validTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
+      if (!validTypes.includes(file.type)) {
+        showAlert("error", "Error", "Please upload a PDF or Word document");
+        e.target.value = "";
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        showAlert("error", "Error", "File size must be less than 10MB");
+        e.target.value = "";
+        return;
+      }
+      setUpdatedProject({
+        ...updatedProject,
+        jobQuotation: file,
+      });
+    }
+  };
+
   return (
-    <div className="relative max-w-[500px] rounded-lg">
+    <div className="relative w-full max-w-[500px] rounded-lg px-2 sm:px-0">
       <div className="flex cursor-pointer items-center justify-between rounded-t-md border border-b-0 border-secondary-300 bg-secondary-100 px-4 py-2">
         <Title>
           Current Status:
@@ -184,10 +288,10 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
           </button>
         </div>
       </div>
-      <div className="max-h-[90vh] overflow-y-auto rounded-b-md border border-secondary-300 bg-white p-4">
+      <div className="max-h-[90vh] overflow-y-auto rounded-b-md border border-secondary-300 bg-white p-2 sm:p-4">
         <div className="flex flex-col gap-4">
           <div className="flex justify-end">
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               {editMode ? (
                 <>
                   <Button
@@ -261,7 +365,7 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                 }
                 value={
                   editMode
-                    ? updatedProject.jobInspectionDate
+                    ? formatDateForInput(updatedProject.jobInspectionDate)
                     : new Date(jobOrder.jobInspectionDate).toLocaleDateString(
                         "en-US",
                       )
@@ -286,7 +390,6 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                 </span>
                 <div className="my-2 h-[1px] w-full bg-secondary-200"></div>
               </div>
-              {/* Extended Date - shows only if the project is delayed or extended */}
               {(alertProjectExtended(jobOrder) ||
                 alertProjectDelayed(jobOrder) ||
                 alertProjectExtendedFinishToday(jobOrder)) && (
@@ -314,7 +417,7 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                     label="Extended Date"
                     value={
                       editMode
-                        ? updatedProject.jobExtendedDate
+                        ? formatDateForInput(updatedProject.jobExtendedDate)
                         : jobOrder.jobExtendedDate
                           ? new Date(
                               jobOrder.jobExtendedDate,
@@ -333,8 +436,7 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                 </>
               )}
 
-              <div className="flex gap-2">
-                {/* Start Date */}
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   id="jobStartDate"
                   type={editMode ? "date" : "text"}
@@ -342,7 +444,7 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                   label="Start Date"
                   value={
                     editMode
-                      ? updatedProject.jobStartDate
+                      ? formatDateForInput(updatedProject.jobStartDate)
                       : new Date(jobOrder.jobStartDate).toLocaleDateString(
                           "en-US",
                         )
@@ -362,7 +464,6 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                       alertProjectExtendedFinishToday(jobOrder))
                   }
                 />
-                {/* End Date */}
                 <Input
                   id="jobEndDate"
                   type={editMode ? "date" : "text"}
@@ -370,7 +471,7 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                   label="End Date"
                   value={
                     editMode
-                      ? updatedProject.jobEndDate
+                      ? formatDateForInput(updatedProject.jobEndDate)
                       : new Date(jobOrder.jobEndDate).toLocaleDateString(
                           "en-US",
                         )
@@ -410,15 +511,8 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
                   name="jobQuotation"
                   label="Upload New Quotation"
                   className="!py-2"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      setUpdatedProject({
-                        ...updatedProject,
-                        jobQuotation: file,
-                      });
-                    }
-                  }}
+                  onChange={handleFileChange}
+                  accept=".pdf,.doc,.docx"
                 />
               )}
             </>
@@ -523,7 +617,7 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
             </span>
             <div className="my-2 h-[1px] w-full bg-secondary-200 text-sm"></div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               id="clientFirstName"
               name="clientFirstName"
@@ -580,7 +674,7 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
             }
             readOnly={!editMode}
           />
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               id="clientEmail"
               name="clientEmail"
@@ -694,8 +788,8 @@ const ViewOnProcess = ({ jobOrder, onClose }) => {
           )}
 
           <div className="my-1 h-[1px] w-full bg-secondary-200 text-sm"></div>
-          <div className="flex flex-col">
-            <div className="flex justify-between">
+          <div className="flex flex-col gap-4 sm:gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-secondary-900">
                   Created By:{" "}
