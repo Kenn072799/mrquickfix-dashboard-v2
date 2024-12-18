@@ -10,10 +10,6 @@ const servicesSchema = new mongoose.Schema({
         type:String,
         required: true
     },
-    typeofJob:{
-        type:String,
-        required: true
-    },
     serviceImageURL:{
         type:String,
         required: true

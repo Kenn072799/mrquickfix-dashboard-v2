@@ -20,6 +20,11 @@ export const signup = async (req, res) => {
           return res.status(400).json({ message: 'Email already exists and is verified. Cannot sign up again.' });
         }
       }
+
+      // Check if the password length is between 8 and 32 characters
+      if (password.length < 8 || password.length > 32) {
+        return res.status(400).json({ message: 'Password must be between 8 and 32 characters' });
+      }
   
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);

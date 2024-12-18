@@ -7,8 +7,6 @@ import ServicesTable from "../components/table/ServicesTable";
 import {
   Button,
   Input,
-  Option,
-  Select,
   Textarea,
 } from "@material-tailwind/react";
 import { List, ListItem, Checkbox, Typography } from "@material-tailwind/react";
@@ -203,7 +201,6 @@ const ContentManagement = () => {
     });
     setImageService(null);
     setServicePhoto(null);
-    setSelectedJobType("");
     setServiceImageSize(0);
   };
 
@@ -213,7 +210,6 @@ const ContentManagement = () => {
     if (
       !newService.serviceName ||
       !imageService ||
-      !selectedJobType ||
       !newService.description
     ) {
       Swal.fire({
@@ -227,7 +223,6 @@ const ContentManagement = () => {
 
     const newServices = new FormData();
     newServices.append("serviceName", newService.serviceName);
-    newServices.append("typeofJob", selectedJobType);
     newServices.append("serviceImage", servicePhoto);
     newServices.append("serviceDescription", newService.description);
 
@@ -503,19 +498,6 @@ const ContentManagement = () => {
                   setNewService({ ...newService, serviceName: e.target.value })
                 }
               />
-              {/* Choose Job Type to add the service */}
-              <Select
-                label="Choose Job Type"
-                value={selectedJobType}
-                onChange={setSelectedJobType}
-              >
-                <Option value="Repairs">Repairs</Option>
-                <Option value="Renovation">Renovation</Option>
-                <Option value="Preventive Maintenance Service (PMS)">
-                  Preventive Maintenance Service (PMS)
-                </Option>
-                <Option value="Cleaning Services">Cleaning Services</Option>
-              </Select>
               {/* Service Image Upload Section */}
               <div className="space-y-2">
                 <label className="text-sm">Upload Image:</label>

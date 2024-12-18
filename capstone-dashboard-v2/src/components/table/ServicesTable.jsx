@@ -44,7 +44,6 @@ const ServicesTable = ({ refreshTrigger }) => {
   const [editService, setEditService] = useState(null);
   const [formData, setFormData] = useState({
     serviceName: "",
-    jobType: "",
     description: "",
     imageUrl: null,
     imageFile: null,
@@ -94,7 +93,6 @@ const ServicesTable = ({ refreshTrigger }) => {
     setEditService(service);
     setFormData({
       serviceName: service.serviceName,
-      jobType: service.typeofJob,
       description: service.serviceDescription,
       imageUrl: service.serviceImageURL,
       imageFile: null,
@@ -119,9 +117,9 @@ const ServicesTable = ({ refreshTrigger }) => {
   };
 
   const handleUpdateService = async () => {
-    const { serviceName, jobType, description, imageFile } = formData;
+    const { serviceName, description, imageFile } = formData;
 
-    if (!serviceName || !jobType || !description) {
+    if (!serviceName || !description) {
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -137,14 +135,12 @@ const ServicesTable = ({ refreshTrigger }) => {
         const formData = new FormData();
         formData.append("serviceImage", imageFile);
         formData.append("serviceName", serviceName);
-        formData.append("typeofJob", jobType);
         formData.append("serviceDescription", description);
 
         await updateImageService(editService._id, formData);
       } else {
         await updateTextService(editService._id, {
           serviceName,
-          typeofJob: jobType,
           serviceDescription: description,
         });
       }
@@ -209,7 +205,6 @@ const ServicesTable = ({ refreshTrigger }) => {
     setEditService(null);
     setFormData({
       serviceName: "",
-      jobType: "",
       description: "",
       imageUrl: null,
       imageFile: null,
@@ -369,19 +364,6 @@ const ServicesTable = ({ refreshTrigger }) => {
                   handleFormChange("serviceName", e.target.value)
                 }
               />
-              {/* Choose Job Type to add the service */}
-              <Select
-                label="Choose Job Type"
-                value={formData.jobType}
-                onChange={(value) => handleFormChange("jobType", value)}
-              >
-                <Option value="Repairs">Repairs</Option>
-                <Option value="Renovation">Renovation</Option>
-                <Option value="Preventive Maintenance Service (PMS)">
-                  Preventive Maintenance Service (PMS)
-                </Option>
-                <Option value="Cleaning Services">Cleaning Services</Option>
-              </Select>
               <label className="text-sm">Upload Image:</label>
               <div className="flex items-center gap-4">
                 {formData.imageUrl ? (
@@ -424,7 +406,6 @@ const ServicesTable = ({ refreshTrigger }) => {
                 disabled={
                   loading ||
                   (formData.serviceName === editService?.serviceName &&
-                    formData.jobType === editService?.typeofJob &&
                     formData.description === editService?.serviceDescription &&
                     !formData.imageFile)
                 }

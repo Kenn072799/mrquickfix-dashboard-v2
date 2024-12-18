@@ -47,7 +47,13 @@ const NavBar = () => {
     }
   };
 
-  const handleNotificationClick = () => {
+  const handleNotificationClick = async (notificationId) => {
+    try {
+      await updateNotificationRead(notificationId);
+      setReadNotifications((prev) => new Set(prev).add(notificationId));
+    } catch (error) {
+      console.error("Error updating notification read status:", error);
+    }
     setOpenNotification(!openNotification);
     setOpenProfile(false);
   };
@@ -294,18 +300,6 @@ const NavBar = () => {
       </div>
     </div>
   );
-
-  useEffect(() => {
-    if (openNotification) {
-      document.body.classList.add("overflow-hidden");
-    } else {
-      document.body.classList.remove("overflow-hidden");
-    }
-
-    return () => {
-      document.body.classList.remove("overflow-hidden");
-    };
-  }, [openNotification]);
 
   return (
     <div className="fixed inset-0 z-30 flex h-16 w-full items-center justify-end gap-4 bg-white px-4">

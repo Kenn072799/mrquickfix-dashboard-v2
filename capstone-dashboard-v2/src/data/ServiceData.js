@@ -8,7 +8,7 @@ export const useServicesData = create((set) => ({
   // @ desc Create a new service
   // @ route POST /api/services
   AddProject: async (newService) => {
-    const requiredFields = ["serviceDescription", "typeofJob"];
+    const requiredFields = ["serviceDescription"];
     for (const field of requiredFields) {
       const value = newService.get(field);
       if (!value) {
